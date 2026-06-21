@@ -1,0 +1,443 @@
+import type { Language } from '@/types'
+
+/**
+ * Flat key/value dictionaries. Both languages share an identical key set so a
+ * missing translation surfaces immediately during development.
+ */
+export const translations: Record<Language, Record<string, string>> = {
+  en: {
+    'app.title': 'AI Playground',
+    'app.tagline': 'A pure client-side multi-provider playground',
+
+    // Sidebar
+    'sidebar.newChat': 'New chat',
+    'sidebar.chats': 'Chats',
+    'sidebar.models': 'API models',
+    'sidebar.addModel': 'Add API',
+    'sidebar.noChats': 'No conversations yet',
+    'sidebar.noModels': 'No APIs configured',
+    'sidebar.import': 'Import',
+    'sidebar.export': 'Export',
+    'sidebar.settings': 'Settings',
+    'sidebar.collapse': 'Collapse sidebar',
+    'sidebar.expand': 'Expand sidebar',
+    'sidebar.rename': 'Rename',
+    'sidebar.delete': 'Delete',
+    'sidebar.deleteChatConfirm': 'Delete this conversation?',
+    'sidebar.deleteModelConfirm': 'Delete this API configuration?',
+    'sidebar.untitled': 'New conversation',
+
+    // Chat window
+    'chat.placeholder': 'Send a message…',
+    'chat.send': 'Send',
+    'chat.stop': 'Stop',
+    'chat.regenerate': 'Regenerate',
+    'chat.copy': 'Copy',
+    'chat.copied': 'Copied',
+    'chat.you': 'You',
+    'chat.assistant': 'Assistant',
+    'chat.emptyTitle': 'Start a conversation',
+    'chat.emptySubtitle':
+      'Pick an API on the left, tune parameters on the right, then send your first message.',
+    'chat.noApiTitle': 'No API selected',
+    'chat.noApiSubtitle': 'Add and select an API configuration to begin.',
+    'chat.addApiCta': 'Add an API',
+    'chat.attach': 'Attach file',
+    'chat.attachImage': 'Image',
+    'chat.attachAudio': 'Audio',
+    'chat.attachVideo': 'Video',
+    'chat.dropHint': 'Drop files to attach',
+    'chat.fileTooLarge': '{name} is {size} — files over 10MB may fail.',
+    'chat.viewOriginal': 'View raw HTTP',
+    'chat.deleteMessage': 'Delete message',
+    'chat.thinking': 'Thinking…',
+    'chat.reasoning': 'Reasoning',
+    'chat.streaming': 'Generating…',
+    'chat.selectModel': 'Select API',
+    'chat.tokens': 'tokens',
+    'chat.errorPrefix': 'Request failed',
+    'chat.enterToSend': 'Shift+Enter to send · Enter for newline',
+    'chat.unsupportedType': '{name}: unsupported file type.',
+
+    // Image lightbox
+    'image.viewOriginal': 'View full size',
+    'image.close': 'Close',
+
+    // Code block
+    'code.copy': 'Copy code',
+    'code.copied': 'Copied!',
+
+    // Settings dialog
+    'settings.title': 'Settings',
+    'settings.appearance': 'Appearance',
+    'settings.theme': 'Theme',
+    'settings.themeDark': 'Dark',
+    'settings.themeLight': 'Light',
+    'settings.language': 'Language',
+    'settings.cors': 'CORS proxy',
+    'settings.corsDesc':
+      'Optional. If a direct request is blocked by CORS, the request is retried with this prefix prepended to the URL.',
+    'settings.corsPlaceholder': 'https://your-cors-proxy.example/',
+    'settings.dataManagement': 'Data management',
+    'settings.exportDesc': 'Download all settings, APIs and chats as JSON.',
+    'settings.importDesc': 'Restore everything from a backup JSON file.',
+    'settings.clearAll': 'Clear all data',
+    'settings.clearAllConfirm':
+      'This permanently deletes all chats, APIs and settings. Continue?',
+    'settings.close': 'Close',
+
+    // API editor
+    'api.add': 'Add API',
+    'api.edit': 'Edit API',
+    'api.duplicate': 'Duplicate',
+    'api.name': 'Display name',
+    'api.namePlaceholder': 'My DeepSeek-R1',
+    'api.baseUrl': 'Base URL',
+    'api.apiKey': 'API key',
+    'api.modelId': 'Model ID',
+    'api.type': 'API type',
+    'api.typeOpenai': 'OpenAI-Compatible',
+    'api.typeGemini': 'Gemini',
+    'api.typeClaude': 'Claude (Anthropic)',
+    'api.templates': 'Quick templates',
+    'api.save': 'Save',
+    'api.cancel': 'Cancel',
+    'api.testConnection': 'Test',
+    'api.required': 'Name, Base URL and Model ID are required.',
+
+    // Parameter panel
+    'param.title': 'Parameters',
+    'param.reset': 'Reset',
+    'param.collapse': 'Collapse panel',
+    'param.stream': 'Stream output',
+    'param.stream.tip':
+      'Stream the response token-by-token (SSE). Turn off to receive a single non-streaming completion.',
+    'param.stream.enable': 'Enable streaming',
+    'param.section.sampling': 'Sampling',
+    'param.section.penalty': 'Penalties',
+    'param.section.format': 'Formatting & control',
+    'param.section.reasoning': 'Reasoning',
+    'param.section.advanced': 'Advanced',
+    'param.systemPrompt': 'System prompt',
+    'param.systemPrompt.tip':
+      "Sets the model's persona and high-level instructions for the conversation.",
+    'param.systemPrompt.placeholder': 'You are a helpful assistant…',
+    'param.temperature': 'Temperature',
+    'param.temperature.tip':
+      'Controls randomness. Lower is more deterministic, higher is more creative (0–2).',
+    'param.temperature.thinkingWarn':
+      'When the active model is Claude with extended thinking, temperature/top_p/top_k are omitted from the request (Anthropic constraint). Other providers are unaffected.',
+    'param.maxCompletionTokens': 'Max completion tokens',
+    'param.maxCompletionTokens.tip':
+      'Upper bound on generated tokens. Sent as max_completion_tokens (OpenAI), max_tokens (Claude) or maxOutputTokens (Gemini).',
+    'param.topP': 'Top P',
+    'param.topP.tip':
+      'Nucleus sampling: only consider tokens within the top P probability mass (0–1).',
+    'param.topK': 'Top K',
+    'param.topK.tip':
+      'Only sample from the K most likely tokens. Honoured by Claude and Gemini (and OpenAI-compatible servers).',
+    'param.presencePenalty': 'Presence penalty',
+    'param.presencePenalty.tip':
+      'Positive values penalise tokens that already appeared, encouraging new topics (−2 to 2).',
+    'param.frequencyPenalty': 'Frequency penalty',
+    'param.frequencyPenalty.tip':
+      'Positive values penalise tokens by frequency, reducing verbatim repetition (−2 to 2).',
+    'param.responseFormat': 'Response format',
+    'param.responseFormat.tip':
+      'Force the model to emit syntactically valid JSON when set to JSON object.',
+    'param.responseFormat.text': 'Text',
+    'param.responseFormat.json': 'JSON object',
+    'param.stop': 'Stop sequences',
+    'param.stop.tip':
+      'Generation halts immediately when any of these strings is produced.',
+    'param.stop.placeholder': 'Type and press Enter…',
+    'param.seed': 'Seed',
+    'param.seed.tip':
+      'If set, the backend makes a best-effort attempt at deterministic sampling.',
+    'param.seed.placeholder': 'random',
+    'param.reasoningEffort': 'Reasoning effort (OpenAI)',
+    'param.reasoningEffort.tip':
+      'Controls thinking depth for OpenAI reasoning models (o1/o3/gpt-5).',
+    'param.reasoningCustom.enable': 'Custom parameter',
+    'param.reasoningCustom.tip':
+      'For non-OpenAI models with different thinking parameters. Disables the dropdown and merges your JSON into the request body. Sampling params are kept (not stripped).',
+    'param.reasoningCustom.placeholder':
+      '"enable_thinking": true, "thinking_budget": 1024',
+    'param.reasoningCustom.invalid': 'Invalid JSON fragment',
+    'param.geminiThinking': 'Thinking level (Gemini)',
+    'param.geminiThinking.tip':
+      'Controls thinking depth for Gemini reasoning models.',
+    'param.claudeThinking': 'Extended thinking (Claude)',
+    'param.claudeThinking.tip':
+      'Enable Claude adaptive thinking. Depth is controlled by the effort level; temperature/top_p/top_k are omitted from the request.',
+    'param.claudeEffort': 'Effort level',
+    'param.claudeEffort.tip':
+      'Adaptive-thinking effort (output_config.effort). Higher levels reason more deeply at greater token cost.',
+    'param.n': 'N (completions)',
+    'param.n.tip': 'How many independent completions to request (1–5).',
+    'param.logitBias': 'Logit bias',
+    'param.logitBias.tip':
+      'JSON map of token id → bias (−100 to 100) to steer token likelihoods.',
+    'param.logitBias.placeholder': '{ "50256": -100 }',
+    'param.logitBias.invalid': 'Invalid JSON',
+    'param.optDefault': 'Default',
+    'param.optMinimal': 'Minimal',
+    'param.optLow': 'Low',
+    'param.optMedium': 'Medium',
+    'param.optHigh': 'High',
+    'param.optXhigh': 'Extra high',
+    'param.optMax': 'Max',
+    'param.appliesTo': 'Applies to',
+
+    // HTTP inspector
+    'inspector.title': 'HTTP transaction',
+    'inspector.raw': 'Raw',
+    'inspector.pretty': 'Pretty',
+    'inspector.request': 'Request',
+    'inspector.response': 'Response',
+    'inspector.headers': 'Headers',
+    'inspector.body': 'Body',
+    'inspector.status': 'Status',
+    'inspector.copyCurl': 'Copy cURL',
+    'inspector.copied': 'Copied!',
+    'inspector.usedProxy': 'via CORS proxy',
+    'inspector.duration': 'Duration',
+    'inspector.noResponse': 'No response captured.',
+
+    // Generic
+    'common.cancel': 'Cancel',
+    'common.confirm': 'Confirm',
+    'common.save': 'Save',
+    'common.delete': 'Delete',
+    'common.add': 'Add',
+    'common.yes': 'Yes',
+    'common.no': 'No',
+    'toast.imported': 'Backup imported successfully.',
+    'toast.importFailed': 'Import failed: invalid backup file.',
+    'toast.exported': 'Backup exported.',
+
+    // Export dialog
+    'export.title': 'Export data',
+    'export.subtitle': 'Choose what to include in the export file.',
+    'export.all': 'Everything',
+    'export.allDesc': 'APIs, parameters, settings and all chats.',
+    'export.configs': 'Configuration only',
+    'export.configsDesc': 'APIs, parameters and settings — no chats.',
+    'export.chats': 'Chats only',
+    'export.chatsDesc': 'All conversations — no API keys or settings.',
+  },
+
+  zh: {
+    'app.title': 'AI 调试台',
+    'app.tagline': '纯客户端 · 多服务商调试台',
+
+    // Sidebar
+    'sidebar.newChat': '新建对话',
+    'sidebar.chats': '对话',
+    'sidebar.models': 'API 模型',
+    'sidebar.addModel': '添加 API',
+    'sidebar.noChats': '暂无对话',
+    'sidebar.noModels': '尚未配置 API',
+    'sidebar.import': '导入',
+    'sidebar.export': '导出',
+    'sidebar.settings': '设置',
+    'sidebar.collapse': '收起侧栏',
+    'sidebar.expand': '展开侧栏',
+    'sidebar.rename': '重命名',
+    'sidebar.delete': '删除',
+    'sidebar.deleteChatConfirm': '确定删除此对话？',
+    'sidebar.deleteModelConfirm': '确定删除此 API 配置？',
+    'sidebar.untitled': '新对话',
+
+    // Chat window
+    'chat.placeholder': '发送消息…',
+    'chat.send': '发送',
+    'chat.stop': '停止',
+    'chat.regenerate': '重新生成',
+    'chat.copy': '复制',
+    'chat.copied': '已复制',
+    'chat.you': '你',
+    'chat.assistant': '助手',
+    'chat.emptyTitle': '开始一段对话',
+    'chat.emptySubtitle': '在左侧选择 API，在右侧调整参数，然后发送第一条消息。',
+    'chat.noApiTitle': '未选择 API',
+    'chat.noApiSubtitle': '请先添加并选择一个 API 配置。',
+    'chat.addApiCta': '添加 API',
+    'chat.attach': '添加附件',
+    'chat.attachImage': '图片',
+    'chat.attachAudio': '音频',
+    'chat.attachVideo': '视频',
+    'chat.dropHint': '拖入文件以添加附件',
+    'chat.fileTooLarge': '{name} 大小为 {size}，超过 10MB 可能失败。',
+    'chat.viewOriginal': '查看原始 HTTP',
+    'chat.deleteMessage': '删除消息',
+    'chat.thinking': '思考中…',
+    'chat.reasoning': '推理过程',
+    'chat.streaming': '生成中…',
+    'chat.selectModel': '选择 API',
+    'chat.tokens': '令牌',
+    'chat.errorPrefix': '请求失败',
+    'chat.enterToSend': 'Shift+Enter 发送 · Enter 换行',
+    'chat.unsupportedType': '{name}：不支持的文件类型。',
+
+    // Image lightbox
+    'image.viewOriginal': '查看原图',
+    'image.close': '关闭',
+
+    // Code block
+    'code.copy': '复制代码',
+    'code.copied': '已复制！',
+
+    // Settings dialog
+    'settings.title': '设置',
+    'settings.appearance': '外观',
+    'settings.theme': '主题',
+    'settings.themeDark': '深色',
+    'settings.themeLight': '浅色',
+    'settings.language': '语言',
+    'settings.cors': 'CORS 代理',
+    'settings.corsDesc':
+      '可选。若直接请求被 CORS 拦截，将自动以此前缀重试请求。',
+    'settings.corsPlaceholder': 'https://你的-cors-代理.example/',
+    'settings.dataManagement': '数据管理',
+    'settings.exportDesc': '将全部设置、API 与对话导出为 JSON。',
+    'settings.importDesc': '从备份 JSON 文件恢复全部数据。',
+    'settings.clearAll': '清空所有数据',
+    'settings.clearAllConfirm': '将永久删除所有对话、API 与设置，是否继续？',
+    'settings.close': '关闭',
+
+    // API editor
+    'api.add': '添加 API',
+    'api.edit': '编辑 API',
+    'api.duplicate': '复制',
+    'api.name': '显示名称',
+    'api.namePlaceholder': '我的 DeepSeek-R1',
+    'api.baseUrl': 'Base URL',
+    'api.apiKey': 'API 密钥',
+    'api.modelId': '模型 ID',
+    'api.type': 'API 类型',
+    'api.typeOpenai': 'OpenAI 兼容',
+    'api.typeGemini': 'Gemini',
+    'api.typeClaude': 'Claude (Anthropic)',
+    'api.templates': '快速模板',
+    'api.save': '保存',
+    'api.cancel': '取消',
+    'api.testConnection': '测试',
+    'api.required': '名称、Base URL 与模型 ID 为必填项。',
+
+    // Parameter panel
+    'param.title': '参数',
+    'param.reset': '重置',
+    'param.collapse': '收起面板',
+    'param.stream': '流式输出',
+    'param.stream.tip':
+      '以 SSE 流式逐字返回响应。关闭后将一次性返回完整（非流式）结果。',
+    'param.stream.enable': '启用流式',
+    'param.section.sampling': '采样',
+    'param.section.penalty': '惩罚项',
+    'param.section.format': '格式与控制',
+    'param.section.reasoning': '推理',
+    'param.section.advanced': '高级',
+    'param.systemPrompt': '系统提示词',
+    'param.systemPrompt.tip': '设定模型的角色与对话的高层指令。',
+    'param.systemPrompt.placeholder': '你是一个乐于助人的助手…',
+    'param.temperature': '温度',
+    'param.temperature.tip': '控制随机性。越低越确定，越高越有创造性（0–2）。',
+    'param.temperature.thinkingWarn':
+      '当实际使用的模型为启用扩展思考的 Claude 时，请求中会省略 temperature/top_p/top_k（Anthropic 限制）；其他提供方不受影响。',
+    'param.maxCompletionTokens': '最大生成令牌数',
+    'param.maxCompletionTokens.tip':
+      '生成令牌数量的上限。OpenAI 发送 max_completion_tokens，Claude 为 max_tokens，Gemini 为 maxOutputTokens。',
+    'param.topP': 'Top P',
+    'param.topP.tip': '核采样：仅考虑累计概率前 P 的令牌（0–1）。',
+    'param.topK': 'Top K',
+    'param.topK.tip':
+      '仅从最可能的 K 个令牌中采样。Claude 与 Gemini（及 OpenAI 兼容服务）支持。',
+    'param.presencePenalty': '存在惩罚',
+    'param.presencePenalty.tip':
+      '正值惩罚已出现过的令牌，鼓励谈论新话题（−2 到 2）。',
+    'param.frequencyPenalty': '频率惩罚',
+    'param.frequencyPenalty.tip':
+      '正值按频率惩罚令牌，减少重复用词（−2 到 2）。',
+    'param.responseFormat': '响应格式',
+    'param.responseFormat.tip': '选择 JSON 对象时强制模型输出合法 JSON。',
+    'param.responseFormat.text': '文本',
+    'param.responseFormat.json': 'JSON 对象',
+    'param.stop': '停止序列',
+    'param.stop.tip': '当生成出其中任意字符串时立即停止。',
+    'param.stop.placeholder': '输入后按回车…',
+    'param.seed': '随机种子',
+    'param.seed.tip': '若设置，后端将尽力进行确定性采样。',
+    'param.seed.placeholder': '随机',
+    'param.reasoningEffort': '推理强度（OpenAI）',
+    'param.reasoningEffort.tip': '控制 OpenAI 推理模型（o1/o3/gpt-5）的思考深度。',
+    'param.reasoningCustom.enable': '自定义参数',
+    'param.reasoningCustom.tip':
+      '用于思考参数不同的非 OpenAI 模型。勾选后将禁用上方下拉框，并把你的 JSON 合并进请求体；采样参数会保留（不被剥离）。',
+    'param.reasoningCustom.placeholder':
+      '"enable_thinking": true, "thinking_budget": 1024',
+    'param.reasoningCustom.invalid': 'JSON 片段无效',
+    'param.geminiThinking': '思考级别（Gemini）',
+    'param.geminiThinking.tip': '控制 Gemini 推理模型的思考深度。',
+    'param.claudeThinking': '扩展思考（Claude）',
+    'param.claudeThinking.tip':
+      '启用 Claude 自适应思考。思考深度由强度级别控制；请求中会省略 temperature/top_p/top_k。',
+    'param.claudeEffort': '强度级别',
+    'param.claudeEffort.tip':
+      '自适应思考的强度（output_config.effort）。级别越高推理越深入，令牌开销也越大。',
+    'param.n': 'N（候选数）',
+    'param.n.tip': '请求生成的独立候选数量（1–5）。',
+    'param.logitBias': 'Logit 偏置',
+    'param.logitBias.tip':
+      '令牌 id → 偏置（−100 到 100）的 JSON 映射，用于引导令牌概率。',
+    'param.logitBias.placeholder': '{ "50256": -100 }',
+    'param.logitBias.invalid': 'JSON 格式无效',
+    'param.optDefault': '默认',
+    'param.optMinimal': '极简',
+    'param.optLow': '低',
+    'param.optMedium': '中',
+    'param.optHigh': '高',
+    'param.optXhigh': '极高',
+    'param.optMax': '最大',
+    'param.appliesTo': '适用于',
+
+    // HTTP inspector
+    'inspector.title': 'HTTP 事务',
+    'inspector.raw': '原始',
+    'inspector.pretty': '美化',
+    'inspector.request': '请求',
+    'inspector.response': '响应',
+    'inspector.headers': '请求头',
+    'inspector.body': '正文',
+    'inspector.status': '状态',
+    'inspector.copyCurl': '复制 cURL',
+    'inspector.copied': '已复制！',
+    'inspector.usedProxy': '经 CORS 代理',
+    'inspector.duration': '耗时',
+    'inspector.noResponse': '未捕获到响应。',
+
+    // Generic
+    'common.cancel': '取消',
+    'common.confirm': '确定',
+    'common.save': '保存',
+    'common.delete': '删除',
+    'common.add': '添加',
+    'common.yes': '是',
+    'common.no': '否',
+    'toast.imported': '备份导入成功。',
+    'toast.importFailed': '导入失败：无效的备份文件。',
+    'toast.exported': '备份已导出。',
+
+    // Export dialog
+    'export.title': '导出数据',
+    'export.subtitle': '选择导出文件包含的内容。',
+    'export.all': '全部',
+    'export.allDesc': 'API、参数、设置以及所有对话。',
+    'export.configs': '仅配置',
+    'export.configsDesc': 'API、参数与设置 —— 不含对话。',
+    'export.chats': '仅对话',
+    'export.chatsDesc': '所有对话 —— 不含 API 密钥或设置。',
+  },
+}
+
+export type TranslationKey = keyof (typeof translations)['en']
