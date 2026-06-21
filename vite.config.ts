@@ -4,8 +4,9 @@ import path from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Served from '/' locally; the GitHub Pages workflow sets GH_PAGES_BASE to the
-  // repo subpath (e.g. '/my-repo/') so built asset URLs resolve there.
+  // Served from '/' locally; the GitHub Pages workflow sets GH_PAGES_BASE to './'
+  // (relative) so built asset URLs resolve under both the github.io repo subpath
+  // and a custom domain root.
   base: process.env.GH_PAGES_BASE ?? '/',
   plugins: [react()],
   resolve: {

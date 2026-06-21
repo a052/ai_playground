@@ -19,7 +19,7 @@ This document explains how **AI Playground** is built: the directory layout, the
 ```
 ai_playground/
 ├── index.html                 # SPA entry; <div id="root"> + /src/main.tsx
-├── vite.config.ts             # Vite config: @ alias, dev port 51800, GH Pages base
+├── vite.config.ts             # Vite config: @ alias, dev port 51800, GH Pages base (relative './' in CI → works on github.io subpath + custom domain)
 ├── tsconfig*.json             # Project references (app + node)
 ├── tailwind.config.js         # darkMode: 'class', HSL token colors
 ├── .github/workflows/         # GitHub Pages deploy workflow

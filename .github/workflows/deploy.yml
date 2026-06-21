@@ -33,10 +33,12 @@ jobs:
         run: npm ci
 
       - name: Build
-        # Serve from the repo subpath on Pages (e.g. /my-repo/). Local dev/build
+        # Use a RELATIVE base so emitted asset URLs (./assets/...) resolve under
+        # both the github.io repo subpath (/<repo>/) and a custom-domain root (/).
+        # A single build then serves correctly on either domain. Local dev/build
         # are unaffected because GH_PAGES_BASE is only set here.
         env:
-          GH_PAGES_BASE: /${{ github.event.repository.name }}/
+          GH_PAGES_BASE: ./
         run: npm run build
 
       - name: Upload Pages artifact
