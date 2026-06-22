@@ -65,10 +65,10 @@ npm run lint       # run ESLint over the repo
    | Template | Type | Base URL | Default model |
    | --- | --- | --- | --- |
    | Ollama (Local) | openai | `http://localhost:11434/v1` | `llama3.2` |
-   | OpenAI | openai | `https://api.openai.com/v1` | `gpt-4o` |
-   | DeepSeek | openai | `https://api.deepseek.com/v1` | `deepseek-chat` |
+   | OpenAI | openai | `https://api.openai.com/v1` | `gpt-5.5` |
+   | DeepSeek | openai | `https://api.deepseek.com/v1` | `deepseek-v4-flash` |
    | Claude (Anthropic) | claude | `https://api.anthropic.com/v1` | `claude-sonnet-4-6` |
-   | Gemini | gemini | `https://generativelanguage.googleapis.com/v1beta` | `gemini-2.0-flash` |
+   | Gemini | gemini | `https://generativelanguage.googleapis.com/v1beta` | `gemini-3.5-flash` |
 
    Any OpenAI-compatible endpoint works with the `openai` type — just point the base URL at it.
 

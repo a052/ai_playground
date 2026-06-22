@@ -23,6 +23,7 @@ import { useUiStore } from '@/store/useUiStore'
 import { useT } from '@/i18n'
 import { toast } from '@/store/useToast'
 import { API_TEMPLATES, emptyConfig } from '@/lib/defaults'
+import { cn } from '@/lib/utils'
 import type { ApiConfig, ApiType } from '@/types'
 
 export function ApiEditorDialog() {
@@ -63,8 +64,10 @@ export function ApiEditorDialog() {
   const applyTemplate = (label: string) => {
     const tpl = API_TEMPLATES.find((x) => x.label === label)
     if (!tpl) return
+    const nameIsAuto =
+      !draft.name || API_TEMPLATES.some((x) => x.label === draft.name)
     patch({
-      name: draft.name || tpl.label,
+      name: nameIsAuto ? tpl.label : draft.name,
       type: tpl.type,
       baseUrl: tpl.baseUrl,
       modelId: tpl.modelId,
@@ -146,7 +149,7 @@ export function ApiEditorDialog() {
             <Input
               value={draft.modelId}
               onChange={(e) => patch({ modelId: e.target.value })}
-              placeholder="gpt-4o"
+              placeholder="gpt-5.5"
               className="font-mono text-xs"
             />
           </FormRow>
@@ -154,12 +157,18 @@ export function ApiEditorDialog() {
           <FormRow label={t('api.apiKey')}>
             <div className="relative">
               <Input
-                type={showKey ? 'text' : 'password'}
+                type="text"
                 value={draft.apiKey}
                 onChange={(e) => patch({ apiKey: e.target.value })}
                 placeholder="sk-…"
-                className="pr-9 font-mono text-xs"
+                className={cn(
+                  'pr-9 font-mono text-xs',
+                  !showKey && 'text-security-disc',
+                )}
                 autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
               <button
                 type="button"

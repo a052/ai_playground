@@ -107,6 +107,10 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .text-security-disc {
+    -webkit-text-security: disc;
+  }
 }
 
 /* Streaming typewriter caret */

@@ -84,23 +84,16 @@ export interface ApiTemplate {
 
 export const API_TEMPLATES: ApiTemplate[] = [
   {
-    label: 'Ollama (Local)',
-    type: 'openai',
-    baseUrl: 'http://localhost:11434/v1',
-    modelId: 'llama3.2',
-    apiKey: 'ollama',
-  },
-  {
     label: 'OpenAI',
     type: 'openai',
     baseUrl: 'https://api.openai.com/v1',
-    modelId: 'gpt-4o',
+    modelId: 'gpt-5.5',
   },
   {
-    label: 'DeepSeek',
-    type: 'openai',
-    baseUrl: 'https://api.deepseek.com/v1',
-    modelId: 'deepseek-chat',
+    label: 'Gemini',
+    type: 'gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    modelId: 'gemini-3.5-flash',
   },
   {
     label: 'Claude (Anthropic)',
@@ -109,10 +102,16 @@ export const API_TEMPLATES: ApiTemplate[] = [
     modelId: 'claude-sonnet-4-6',
   },
   {
-    label: 'Gemini',
-    type: 'gemini',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    modelId: 'gemini-2.0-flash',
+    label: 'Ollama (Local)',
+    type: 'openai',
+    baseUrl: 'http://localhost:11434/v1',
+    modelId: 'llama3.2',
+  },
+  {
+    label: 'DeepSeek',
+    type: 'openai',
+    baseUrl: 'https://api.deepseek.com/v1',
+    modelId: 'deepseek-v4-flash',
   },
 ]
 
