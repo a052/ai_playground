@@ -2,6 +2,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
 } from 'react'
@@ -112,6 +113,25 @@ export function MessageComposer({
     if (e.dataTransfer.files?.length) void addFiles(e.dataTransfer.files)
   }
 
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return
+    const dt = e.clipboardData
+    if (!dt) return
+    let files: File[] = []
+    if (dt.files?.length) {
+      files = Array.from(dt.files)
+    } else if (dt.items?.length) {
+      files = Array.from(dt.items)
+        .filter((it) => it.kind === 'file')
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => f !== null)
+    }
+    if (files.length) {
+      e.preventDefault()
+      void addFiles(files)
+    }
+  }
+
   const removeAttachment = (id: string) =>
     setAttachments((prev) => prev.filter((a) => a.id !== id))
 
@@ -202,6 +222,7 @@ export function MessageComposer({
               resize()
             }}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
             rows={1}
             placeholder={t('chat.placeholder')}
             className="max-h-[200px] flex-1 resize-none self-center bg-transparent py-2 text-sm leading-relaxed outline-none scrollbar-thin placeholder:text-muted-foreground disabled:cursor-not-allowed"

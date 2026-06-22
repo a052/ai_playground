@@ -238,7 +238,7 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `App.tsx` | 3-pane shell (Sidebar / ChatWindow / ParameterPanel), runs `hydrate()`, applies theme + `lang`. |
 | `Sidebar.tsx` | Session list, API config list, theme/language toggles, settings + import/export entry points. |
 | `ChatWindow.tsx` | Active API selector, message stream, empty state. |
-| `MessageComposer.tsx` | Textarea, attach button, send/stop, attachment chips, drag-drop. |
+| `MessageComposer.tsx` | Textarea, attach button, send/stop, attachment chips, drag-drop, clipboard paste (Ctrl+V / right-click → Paste). |
 | `ParameterPanel.tsx` | Accordion of all model parameters with per-param enable toggles. |
 | `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/inspect/delete). |
 | `ReasoningBlock.tsx` | Collapsible thinking display; auto-collapses when the answer starts. |
