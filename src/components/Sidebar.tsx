@@ -30,6 +30,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { useUiStore } from '@/store/useUiStore'
 import { useT } from '@/i18n'
 import { toast } from '@/store/useToast'
+import { confirm } from '@/store/useConfirm'
 import { cn } from '@/lib/utils'
 
 const TYPE_LABEL: Record<string, string> = {
@@ -171,10 +172,13 @@ export function Sidebar() {
                         </IconBtn>
                         <IconBtn
                           label={t('sidebar.delete')}
-                          onClick={() => {
-                            if (window.confirm(t('sidebar.deleteChatConfirm')))
-                              deleteSession(s.id)
-                          }}
+                          onClick={() =>
+                            confirm({
+                              title: t('sidebar.deleteChatConfirm'),
+                              description: t('confirm.deleteChatDesc'),
+                              onConfirm: () => deleteSession(s.id),
+                            })
+                          }
                         >
                           <Trash2 className="h-3 w-3" />
                         </IconBtn>
@@ -234,10 +238,13 @@ export function Sidebar() {
                         </IconBtn>
                         <IconBtn
                           label={t('sidebar.delete')}
-                          onClick={() => {
-                            if (window.confirm(t('sidebar.deleteModelConfirm')))
-                              removeConfig(c.id)
-                          }}
+                          onClick={() =>
+                            confirm({
+                              title: t('sidebar.deleteModelConfirm'),
+                              description: t('confirm.deleteModelDesc'),
+                              onConfirm: () => removeConfig(c.id),
+                            })
+                          }
                         >
                           <Trash2 className="h-3 w-3" />
                         </IconBtn>

@@ -21,6 +21,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { useUiStore } from '@/store/useUiStore'
 import { useT } from '@/i18n'
 import { toast } from '@/store/useToast'
+import { confirm } from '@/store/useConfirm'
 import type { Language, ThemeMode } from '@/types'
 
 export function SettingsDialog() {
@@ -142,12 +143,17 @@ export function SettingsDialog() {
               variant="destructive"
               size="sm"
               className="w-full gap-1.5"
-              onClick={async () => {
-                if (window.confirm(t('settings.clearAllConfirm'))) {
-                  await clearAll()
-                  setOpen(false)
-                }
-              }}
+              onClick={() =>
+                confirm({
+                  title: t('settings.clearAll'),
+                  description: t('settings.clearAllConfirm'),
+                  confirmLabel: t('settings.clearAll'),
+                  onConfirm: async () => {
+                    await clearAll()
+                    setOpen(false)
+                  },
+                })
+              }
             >
               <Trash2 className="h-3.5 w-3.5" />
               {t('settings.clearAll')}

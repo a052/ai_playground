@@ -27,6 +27,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'sidebar.deleteModelConfirm': 'Delete this API configuration?',
     'sidebar.untitled': 'New conversation',
 
+    // Confirmation dialog
+    'confirm.deleteChatDesc':
+      "This conversation will be permanently removed. This action can't be undone.",
+    'confirm.deleteModelDesc':
+      "This API configuration will be permanently removed. This action can't be undone.",
+
     // Chat window
     'chat.placeholder': 'Send a message…',
     'chat.send': 'Send',
@@ -248,6 +254,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'sidebar.deleteChatConfirm': '确定删除此对话？',
     'sidebar.deleteModelConfirm': '确定删除此 API 配置？',
     'sidebar.untitled': '新对话',
+
+    // Confirmation dialog
+    'confirm.deleteChatDesc': '此对话将被永久删除，操作无法撤销。',
+    'confirm.deleteModelDesc': '此 API 配置将被永久删除，操作无法撤销。',
 
     // Chat window
     'chat.placeholder': '发送消息…',

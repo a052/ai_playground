@@ -40,7 +40,8 @@ ai_playground/
     ├── store/                 # Zustand stores
     │   ├── useAppStore.ts     # Persistent domain state + generation control
     │   ├── useUiStore.ts      # Ephemeral UI state (panels, dialogs)
-    │   └── useToast.ts        # Toast queue
+    │   ├── useToast.ts        # Toast queue
+    │   └── useConfirm.ts      # Confirmation-dialog request + confirm() helper
     ├── hooks/
     │   └── useStream.ts       # Controller: UI → apiClient → store
     ├── components/            # React components (see §10)
@@ -159,6 +160,10 @@ Holds `configs`, `parameters`, `settings`, `sessions`, `activeSessionId`, plus r
 
 `push(message, variant)` (auto-dismiss ~3.2s) and `dismiss(id)`, plus an imperative `toast.success/error/info` helper.
 
+### `useConfirm.ts` — confirmation requests
+
+Holds a single active `{ open, options, pending }` confirm request and the `request`/`cancel`/`accept` actions; `accept` awaits an async `onConfirm` while guarding with `pending`. Exposes an imperative `confirm({ title, description?, confirmLabel?, cancelLabel?, onConfirm })` helper (mirrors `toast`) so any code can pop the designed `ConfirmDialog` — replacing native `window.confirm()` for destructive actions (delete chat, delete model, clear all data).
+
 ---
 
 ## 7. Persistence — `src/lib/storage.ts`
@@ -243,6 +248,7 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `SettingsDialog.tsx` | Theme, language, CORS proxy, export/import/clear. |
 | `ApiEditorDialog.tsx` | Add/edit an API config; quick templates; show/hide key. |
 | `ExportDialog.tsx` | Choose backup scope and download. |
+| `ConfirmDialog.tsx` | Designed destructive-confirm dialog driven by `useConfirm`; replaces `window.confirm`. |
 | `HttpInspectorModal.tsx` | View captured HTTP and copy as `curl`. |
 | `ui/` | Vendored shadcn-style Radix primitives (button, dialog, select, slider, switch, tabs, tooltip, accordion, …). Treat as a design-system layer. |
 
