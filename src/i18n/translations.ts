@@ -237,6 +237,23 @@ export const translations: Record<Language, Record<string, string>> = {
     'export.configsDesc': 'APIs, parameters and settings — no chats.',
     'export.chats': 'Chats only',
     'export.chatsDesc': 'All conversations — no API keys or settings.',
+
+    // Prompt / parameter template library
+    'templates.systemPrompt': 'System prompt template',
+    'templates.reasoning': 'Custom parameter template',
+    'templates.add': 'Add template',
+    'templates.edit': 'Edit template',
+    'templates.delete': 'Delete template',
+    'templates.select': 'Select template',
+    'templates.title': 'Title',
+    'templates.content': 'Content',
+    'templates.titlePlaceholder': 'My template',
+    'templates.contentPlaceholder': 'Template content…',
+    'templates.empty': 'No templates yet',
+    'templates.titleRequired': 'Title is required.',
+    'templates.deleteConfirm': 'Delete this template?',
+    'templates.deleteDesc':
+      "This template will be permanently removed. This action can't be undone.",
   },
 
   zh: {
@@ -458,6 +475,22 @@ export const translations: Record<Language, Record<string, string>> = {
     'export.configsDesc': 'API、参数与设置 —— 不含对话。',
     'export.chats': '仅对话',
     'export.chatsDesc': '所有对话 —— 不含 API 密钥或设置。',
+
+    // Prompt / parameter template library
+    'templates.systemPrompt': '系统提示模板',
+    'templates.reasoning': '自定义参数模板',
+    'templates.add': '添加模板',
+    'templates.edit': '编辑模板',
+    'templates.delete': '删除模板',
+    'templates.select': '选择模板',
+    'templates.title': '标题',
+    'templates.content': '内容',
+    'templates.titlePlaceholder': '我的模板',
+    'templates.contentPlaceholder': '模板内容…',
+    'templates.empty': '暂无模板',
+    'templates.titleRequired': '标题不能为空。',
+    'templates.deleteConfirm': '确定删除此模板？',
+    'templates.deleteDesc': '此模板将被永久删除，操作无法撤销。',
   },
 }
 

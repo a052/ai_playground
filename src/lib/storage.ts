@@ -1,5 +1,11 @@
 import localforage from 'localforage'
-import type { ApiConfig, ChatSession, ModelParameters, Settings } from '@/types'
+import type {
+  ApiConfig,
+  ChatSession,
+  ModelParameters,
+  PromptTemplate,
+  Settings,
+} from '@/types'
 
 // ---------------------------------------------------------------------------
 // IndexedDB (via localforage) — heavy data: chat sessions incl. base64 media.
@@ -46,6 +52,8 @@ export async function clearSessionStore(): Promise<void> {
 const LS_CONFIGS = 'ai-playground:configs'
 const LS_PARAMS = 'ai-playground:parameters'
 const LS_SETTINGS = 'ai-playground:settings'
+const LS_PROMPT_TEMPLATES = 'ai-playground:promptTemplates'
+const LS_REASONING_TEMPLATES = 'ai-playground:reasoningTemplates'
 
 function readJSON<T>(key: string, fallback: T): T {
   try {
@@ -81,8 +89,24 @@ export const settingsStorage = {
   save: (settings: Settings) => writeJSON(LS_SETTINGS, settings),
 }
 
+export const promptTemplatesStorage = {
+  load: (fallback: PromptTemplate[]) =>
+    readJSON<PromptTemplate[]>(LS_PROMPT_TEMPLATES, fallback),
+  save: (templates: PromptTemplate[]) =>
+    writeJSON(LS_PROMPT_TEMPLATES, templates),
+}
+
+export const reasoningTemplatesStorage = {
+  load: (fallback: PromptTemplate[]) =>
+    readJSON<PromptTemplate[]>(LS_REASONING_TEMPLATES, fallback),
+  save: (templates: PromptTemplate[]) =>
+    writeJSON(LS_REASONING_TEMPLATES, templates),
+}
+
 export function clearLocalConfig(): void {
   localStorage.removeItem(LS_CONFIGS)
   localStorage.removeItem(LS_PARAMS)
   localStorage.removeItem(LS_SETTINGS)
+  localStorage.removeItem(LS_PROMPT_TEMPLATES)
+  localStorage.removeItem(LS_REASONING_TEMPLATES)
 }

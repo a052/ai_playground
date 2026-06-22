@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { TemplatePicker } from '@/components/TemplatePicker'
 import { useAppStore } from '@/store/useAppStore'
 import { useUiStore } from '@/store/useUiStore'
 import { useT } from '@/i18n'
@@ -34,6 +35,16 @@ export function ParameterPanel() {
   const set = useAppStore((s) => s.setParameter)
   const reset = useAppStore((s) => s.resetParameters)
   const setParamPanel = useUiStore((s) => s.setParamPanel)
+
+  const promptTemplates = useAppStore((s) => s.promptTemplates)
+  const addPromptTemplate = useAppStore((s) => s.addPromptTemplate)
+  const updatePromptTemplate = useAppStore((s) => s.updatePromptTemplate)
+  const removePromptTemplate = useAppStore((s) => s.removePromptTemplate)
+
+  const reasoningTemplates = useAppStore((s) => s.reasoningTemplates)
+  const addReasoningTemplate = useAppStore((s) => s.addReasoningTemplate)
+  const updateReasoningTemplate = useAppStore((s) => s.updateReasoningTemplate)
+  const removeReasoningTemplate = useAppStore((s) => s.removeReasoningTemplate)
 
   const logitInvalid =
     p.enabled.logitBias && !!p.logitBias.trim() && !isValidJson(p.logitBias)
@@ -79,7 +90,20 @@ export function ParameterPanel() {
 
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-3">
         {/* System prompt (always active) */}
-        <Field label={t('param.systemPrompt')} tip={t('param.systemPrompt.tip')}>
+        <Field
+          label={t('param.systemPrompt')}
+          tip={t('param.systemPrompt.tip')}
+          actions={
+            <TemplatePicker
+              templates={promptTemplates}
+              onApply={(content) => set('systemPrompt', content)}
+              onAdd={addPromptTemplate}
+              onUpdate={updatePromptTemplate}
+              onDelete={removePromptTemplate}
+              labelKey="templates.systemPrompt"
+            />
+          }
+        >
           <Textarea
             value={p.systemPrompt}
             onChange={(e) => set('systemPrompt', e.target.value)}
@@ -220,23 +244,36 @@ export function ParameterPanel() {
                 </Select>
 
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5">
-                    <Checkbox
-                      checked={p.reasoningCustomEnabled}
-                      onCheckedChange={(v) => set('reasoningCustomEnabled', v)}
-                      disabled={off('reasoningEffort')}
-                      aria-label={t('param.reasoningCustom.enable')}
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex min-w-0 items-center gap-1.5">
+                      <Checkbox
+                        checked={p.reasoningCustomEnabled}
+                        onCheckedChange={(v) => set('reasoningCustomEnabled', v)}
+                        disabled={off('reasoningEffort')}
+                        aria-label={t('param.reasoningCustom.enable')}
+                      />
+                      <span
+                        className={cn(
+                          'text-xs text-muted-foreground',
+                          off('reasoningEffort') && 'opacity-50',
+                        )}
+                      >
+                        {t('param.reasoningCustom.enable')}
+                      </span>
+                      <InfoTooltip text={t('param.reasoningCustom.tip')} />
+                    </label>
+                    <TemplatePicker
+                      templates={reasoningTemplates}
+                      onApply={(content) => set('reasoningCustom', content)}
+                      onAdd={addReasoningTemplate}
+                      onUpdate={updateReasoningTemplate}
+                      onDelete={removeReasoningTemplate}
+                      labelKey="templates.reasoning"
+                      disabled={
+                        off('reasoningEffort') || !p.reasoningCustomEnabled
+                      }
                     />
-                    <span
-                      className={cn(
-                        'text-xs text-muted-foreground',
-                        off('reasoningEffort') && 'opacity-50',
-                      )}
-                    >
-                      {t('param.reasoningCustom.enable')}
-                    </span>
-                    <InfoTooltip text={t('param.reasoningCustom.tip')} />
-                  </label>
+                  </div>
                   <Textarea
                     value={p.reasoningCustom}
                     disabled={off('reasoningEffort') || !p.reasoningCustomEnabled}
@@ -489,6 +526,7 @@ function Field({
   appliesTo,
   toggle,
   dim,
+  actions,
   children,
 }: {
   label: string
@@ -499,6 +537,8 @@ function Field({
   toggle?: { checked: boolean; onChange: (v: boolean) => void; locked?: boolean }
   /** Dim the label/value to signal the control is inactive. */
   dim?: boolean
+  /** Optional controls rendered on the right side of the label row. */
+  actions?: ReactNode
   children: ReactNode
 }) {
   return (
@@ -530,16 +570,19 @@ function Field({
             </span>
           )}
         </div>
-        {value !== undefined && (
-          <span
-            className={cn(
-              'font-mono text-xs text-muted-foreground',
-              dim && 'opacity-50',
-            )}
-          >
-            {value}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {value !== undefined && (
+            <span
+              className={cn(
+                'font-mono text-xs text-muted-foreground',
+                dim && 'opacity-50',
+              )}
+            >
+              {value}
+            </span>
+          )}
+          {actions}
+        </div>
       </div>
       {children}
     </div>

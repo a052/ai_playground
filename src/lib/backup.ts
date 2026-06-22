@@ -4,6 +4,7 @@ import type {
   BackupScope,
   ChatSession,
   ModelParameters,
+  PromptTemplate,
   Settings,
 } from '@/types'
 import {
@@ -17,6 +18,8 @@ export interface BackupData {
   configs: ApiConfig[]
   parameters: ModelParameters
   settings: Settings
+  promptTemplates: PromptTemplate[]
+  reasoningTemplates: PromptTemplate[]
   sessions: ChatSession[]
 }
 
@@ -31,6 +34,8 @@ export function buildBackup(data: BackupData, scope: BackupScope): BackupFile {
     backup.configs = data.configs
     backup.parameters = data.parameters
     backup.settings = data.settings
+    backup.promptTemplates = data.promptTemplates
+    backup.reasoningTemplates = data.reasoningTemplates
   }
   if (scope === 'all' || scope === 'chats') {
     backup.sessions = data.sessions
@@ -64,6 +69,14 @@ export function parseBackup(raw: string): BackupFile {
   const parameters =
     'parameters' in json ? normalizeParameters(json.parameters) : undefined
   const settings = 'settings' in json ? sanitizeSettings(json.settings) : undefined
+  const promptTemplates =
+    'promptTemplates' in json
+      ? sanitizeTemplates(json.promptTemplates)
+      : undefined
+  const reasoningTemplates =
+    'reasoningTemplates' in json
+      ? sanitizeTemplates(json.reasoningTemplates)
+      : undefined
 
   // Infer scope: explicit field wins; otherwise derive from present sections.
   let scope: BackupScope
@@ -89,6 +102,8 @@ export function parseBackup(raw: string): BackupFile {
     configs,
     parameters,
     settings,
+    promptTemplates,
+    reasoningTemplates,
     sessions,
   }
 }
@@ -139,6 +154,23 @@ function sanitizeSessions(value: unknown): ChatSession[] {
         : {}),
       // Trust message shape after the minimal guard above.
       messages: messages as unknown as ChatSession['messages'],
+    })
+  }
+  return valid
+}
+
+function sanitizeTemplates(value: unknown): PromptTemplate[] {
+  if (!Array.isArray(value)) return []
+  const valid: PromptTemplate[] = []
+  for (const t of value) {
+    if (!isObject(t)) continue
+    if (typeof t.id !== 'string') continue
+    valid.push({
+      id: t.id,
+      title: typeof t.title === 'string' ? t.title : '',
+      content: typeof t.content === 'string' ? t.content : '',
+      createdAt: typeof t.createdAt === 'number' ? t.createdAt : Date.now(),
+      updatedAt: typeof t.updatedAt === 'number' ? t.updatedAt : Date.now(),
     })
   }
   return valid

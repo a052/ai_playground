@@ -152,6 +152,17 @@ export interface Settings {
   activeConfigId: string | null
 }
 
+/** A named, reusable snippet — used for both system prompts and custom
+ *  reasoning JSON fragments. The two libraries are stored separately but
+ *  share this shape. */
+export interface PromptTemplate {
+  id: string
+  title: string
+  content: string
+  createdAt: number
+  updatedAt: number
+}
+
 /** Which slices a backup file carries. */
 export type BackupScope = 'all' | 'configs' | 'chats'
 
@@ -164,6 +175,8 @@ export interface BackupFile {
   configs?: ApiConfig[]
   parameters?: ModelParameters
   settings?: Settings
+  promptTemplates?: PromptTemplate[]
+  reasoningTemplates?: PromptTemplate[]
   sessions?: ChatSession[]
 }
 

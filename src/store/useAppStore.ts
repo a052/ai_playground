@@ -6,6 +6,7 @@ import type {
   Language,
   Message,
   ModelParameters,
+  PromptTemplate,
   Settings,
   ThemeMode,
 } from '@/types'
@@ -20,6 +21,8 @@ import {
   configStorage,
   loadSessions,
   paramsStorage,
+  promptTemplatesStorage,
+  reasoningTemplatesStorage,
   saveSessions,
   settingsStorage,
 } from '@/lib/storage'
@@ -44,6 +47,8 @@ interface AppState {
   configs: ApiConfig[]
   parameters: ModelParameters
   settings: Settings
+  promptTemplates: PromptTemplate[]
+  reasoningTemplates: PromptTemplate[]
   sessions: ChatSession[]
   activeSessionId: string | null
 
@@ -68,6 +73,16 @@ interface AppState {
     value: ModelParameters[K],
   ) => void
   resetParameters: () => void
+
+  // prompt templates (system-prompt library)
+  addPromptTemplate: (title: string, content: string) => void
+  updatePromptTemplate: (id: string, title: string, content: string) => void
+  removePromptTemplate: (id: string) => void
+
+  // reasoning custom-parameter templates
+  addReasoningTemplate: (title: string, content: string) => void
+  updateReasoningTemplate: (id: string, title: string, content: string) => void
+  removeReasoningTemplate: (id: string) => void
 
   // settings
   setTheme: (theme: ThemeMode) => void
@@ -118,6 +133,12 @@ function persistParams(params: ModelParameters) {
 function persistSettings(settings: Settings) {
   settingsStorage.save(settings)
 }
+function persistPromptTemplates(templates: PromptTemplate[]) {
+  promptTemplatesStorage.save(templates)
+}
+function persistReasoningTemplates(templates: PromptTemplate[]) {
+  reasoningTemplatesStorage.save(templates)
+}
 
 /** Immutably patch a session in the sessions array and bump `updatedAt`. */
 function patchSession(
@@ -132,6 +153,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   configs: [],
   parameters: { ...DEFAULT_PARAMETERS },
   settings: { ...DEFAULT_SETTINGS },
+  promptTemplates: [],
+  reasoningTemplates: [],
   sessions: [],
   activeSessionId: null,
 
@@ -145,6 +168,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       paramsStorage.load({ ...DEFAULT_PARAMETERS }),
     )
     const settings = settingsStorage.load({ ...DEFAULT_SETTINGS })
+    const promptTemplates = promptTemplatesStorage.load([])
+    const reasoningTemplates = reasoningTemplatesStorage.load([])
     const sessions = await loadSessions()
     sessions.sort((a, b) => b.updatedAt - a.updatedAt)
 
@@ -162,6 +187,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       configs,
       parameters,
       settings,
+      promptTemplates,
+      reasoningTemplates,
       sessions,
       activeSessionId: sessions[0]?.id ?? null,
       hydrated: true,
@@ -217,6 +244,62 @@ export const useAppStore = create<AppState>((set, get) => ({
     const parameters = { ...DEFAULT_PARAMETERS }
     persistParams(parameters)
     set({ parameters })
+  },
+
+  // --- prompt templates ----------------------------------------------------
+  addPromptTemplate: (title, content) => {
+    const now = Date.now()
+    const template: PromptTemplate = {
+      id: uid('tpl_'),
+      title,
+      content,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const promptTemplates = [...get().promptTemplates, template]
+    persistPromptTemplates(promptTemplates)
+    set({ promptTemplates })
+  },
+  updatePromptTemplate: (id, title, content) => {
+    const promptTemplates = get().promptTemplates.map((t) =>
+      t.id === id ? { ...t, title, content, updatedAt: Date.now() } : t,
+    )
+    persistPromptTemplates(promptTemplates)
+    set({ promptTemplates })
+  },
+  removePromptTemplate: (id) => {
+    const promptTemplates = get().promptTemplates.filter((t) => t.id !== id)
+    persistPromptTemplates(promptTemplates)
+    set({ promptTemplates })
+  },
+
+  // --- reasoning custom-parameter templates --------------------------------
+  addReasoningTemplate: (title, content) => {
+    const now = Date.now()
+    const template: PromptTemplate = {
+      id: uid('tpl_'),
+      title,
+      content,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const reasoningTemplates = [...get().reasoningTemplates, template]
+    persistReasoningTemplates(reasoningTemplates)
+    set({ reasoningTemplates })
+  },
+  updateReasoningTemplate: (id, title, content) => {
+    const reasoningTemplates = get().reasoningTemplates.map((t) =>
+      t.id === id ? { ...t, title, content, updatedAt: Date.now() } : t,
+    )
+    persistReasoningTemplates(reasoningTemplates)
+    set({ reasoningTemplates })
+  },
+  removeReasoningTemplate: (id) => {
+    const reasoningTemplates = get().reasoningTemplates.filter(
+      (t) => t.id !== id,
+    )
+    persistReasoningTemplates(reasoningTemplates)
+    set({ reasoningTemplates })
   },
 
   // --- settings ------------------------------------------------------------
@@ -370,8 +453,25 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // --- backup --------------------------------------------------------------
   exportBackup: (scope) => {
-    const { configs, parameters, settings, sessions } = get()
-    const backup = buildBackup({ configs, parameters, settings, sessions }, scope)
+    const {
+      configs,
+      parameters,
+      settings,
+      promptTemplates,
+      reasoningTemplates,
+      sessions,
+    } = get()
+    const backup = buildBackup(
+      {
+        configs,
+        parameters,
+        settings,
+        promptTemplates,
+        reasoningTemplates,
+        sessions,
+      },
+      scope,
+    )
     const blob = new Blob([JSON.stringify(backup, null, 2)], {
       type: 'application/json',
     })
@@ -412,6 +512,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
 
+    if (backup.promptTemplates) {
+      persistPromptTemplates(backup.promptTemplates)
+      patch.promptTemplates = backup.promptTemplates
+    }
+    if (backup.reasoningTemplates) {
+      persistReasoningTemplates(backup.reasoningTemplates)
+      patch.reasoningTemplates = backup.reasoningTemplates
+    }
+
     // Chats slice replaces sessions only.
     if (backup.sessions) {
       const sessions = backup.sessions
@@ -431,6 +540,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       configs: [],
       parameters: { ...DEFAULT_PARAMETERS },
       settings: { ...DEFAULT_SETTINGS },
+      promptTemplates: [],
+      reasoningTemplates: [],
       sessions: [],
       activeSessionId: null,
     })

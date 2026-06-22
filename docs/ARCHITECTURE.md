@@ -143,12 +143,13 @@ State uses **Zustand** (no Redux/Context). Three stores:
 
 ### `useAppStore.ts` — persistent domain state
 
-Holds `configs`, `parameters`, `settings`, `sessions`, `activeSessionId`, plus runtime `hydrated`, `isGenerating`, and `abortController`. Every mutator writes through to storage (config/params/settings synchronously to `localStorage`; sessions via the debounced IndexedDB save). Notable actions:
+Holds `configs`, `parameters`, `settings`, `promptTemplates`, `reasoningTemplates`, `sessions`, `activeSessionId`, plus runtime `hydrated`, `isGenerating`, and `abortController`. Every mutator writes through to storage (config/params/settings/templates synchronously to `localStorage`; sessions via the debounced IndexedDB save). Notable actions:
 
 - **Hydration:** `hydrate()` loads from storage, sorts sessions by `updatedAt`, validates the active config still exists, then sets `hydrated = true`. **It must run on mount** (done in `App.tsx`) before the UI renders; `hydrated` gates the loading spinner.
 - **Configs:** `addConfig`, `updateConfig`, `duplicateConfig`, `removeConfig`, `setActiveConfig`.
 - **Parameters:** `setParameter(key, value)`, `resetParameters`.
 - **Settings:** `setTheme`, `toggleTheme`, `setLanguage`, `setCorsProxy`.
+- **Templates:** `addPromptTemplate / updatePromptTemplate / removePromptTemplate` and `addReasoningTemplate / updateReasoningTemplate / removeReasoningTemplate`. Two parallel libraries of `PromptTemplate` (`{ id, title, content, createdAt, updatedAt }`) — one feeds the **System prompt** field, the other feeds the **Reasoning → Custom parameter** JSON-fragment field. Selecting a template overwrites the corresponding `parameters` field via `setParameter`.
 - **Sessions:** `createSession`, `ensureActiveSession`, `deleteSession`, `renameSession`, `setActiveSession`, `setSessionModel` (records the config id last used to generate in a chat, on `ChatSession.lastUsedConfigId`), `openSession` (sets the active session **and** restores its `lastUsedConfigId` as the active config — returns an `OpenSessionResult` of `{ status: 'none' | 'switched' | 'missing', modelName? }` so the sidebar can toast on switch or when the recorded config was deleted).
 - **Messages:** `addMessage` (auto-derives the session title from the first user message), `updateMessage`, `appendToMessage` (accumulates streaming content/reasoning deltas), `deleteMessage`.
 - **Generation control:** `setGenerating`, `setAbortController`, `stopGeneration` (aborts + clears).
@@ -175,14 +176,14 @@ A deliberate split by size and access pattern:
 
 | Backing store | Contents | Keys | Notes |
 | --- | --- | --- | --- |
-| `localStorage` | API configs, parameters, settings | `ai-playground:configs`, `ai-playground:parameters`, `ai-playground:settings` | Small, synchronous JSON. |
+| `localStorage` | API configs, parameters, settings, prompt/reasoning templates | `ai-playground:configs`, `ai-playground:parameters`, `ai-playground:settings`, `ai-playground:promptTemplates`, `ai-playground:reasoningTemplates` | Small, synchronous JSON. |
 | `IndexedDB` (localforage) | Chat sessions (with base64 media/PDF) | DB `ai-playground`, store `sessions`, key `sessions` | Large; writes **debounced ~600ms** via `scheduleSessionSave`. |
 
 `normalizeParameters` (in `src/lib/defaults.ts`) deep-merges stored/imported params onto `DEFAULT_PARAMETERS` so older saves missing newer fields (e.g. `stream`, `enabled`, `maxCompletionTokens`) don't break the app.
 
 ### Backup / restore — `src/lib/backup.ts`
 
-`buildBackup(data, scope)` produces a `BackupFile`; `parseBackup(raw)` validates and **sanitizes field-by-field** (`sanitizeConfigs`, `sanitizeSessions`, `sanitizeSettings`) so a malformed or partial import can't corrupt state. Scopes (`all` / `configs` / `chats`) round-trip only the sections present; absent sections stay `undefined` and are left untouched on import.
+`buildBackup(data, scope)` produces a `BackupFile`; `parseBackup(raw)` validates and **sanitizes field-by-field** (`sanitizeConfigs`, `sanitizeSessions`, `sanitizeSettings`, `sanitizeTemplates`) so a malformed or partial import can't corrupt state. Scopes (`all` / `configs` / `chats`) round-trip only the sections present; absent sections stay `undefined` and are left untouched on import. Prompt and reasoning template libraries travel with the `configs` / `all` scopes.
 
 ---
 
@@ -197,7 +198,8 @@ The authoritative reference. Summary:
 - **`ChatSession`** — `{ id, title, messages, createdAt, updatedAt, lastUsedConfigId? }`. `lastUsedConfigId` is the config id last used to generate in the chat; opening the chat restores it as the active model (see `openSession`).
 - **`HttpTransaction`** — captured request/response (see §4.6).
 - **`Settings`** — `{ theme, language, corsProxy, activeConfigId }`.
-- **`BackupFile`** — `{ version, exportedAt, scope, configs?, parameters?, settings?, sessions? }`.
+- **`PromptTemplate`** — `{ id, title, content, createdAt, updatedAt }`. Shared shape for both the system-prompt library and the custom-reasoning-parameter library; stored separately in `promptTemplates` and `reasoningTemplates`.
+- **`BackupFile`** — `{ version, exportedAt, scope, configs?, parameters?, settings?, promptTemplates?, reasoningTemplates?, sessions? }`.
 - **`StreamCallbacks`** — `{ onContent, onReasoning, onTransaction, onError, onDone }`.
 
 ---
