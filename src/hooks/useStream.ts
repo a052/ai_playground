@@ -24,6 +24,7 @@ export function useStream() {
         model: config.name,
         isStreaming: true,
       })
+      store.setSessionModel(sessionId, config.id)
 
       const controller = new AbortController()
       store.setAbortController(controller)

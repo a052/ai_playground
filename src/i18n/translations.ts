@@ -223,6 +223,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'toast.imported': 'Backup imported successfully.',
     'toast.importFailed': 'Import failed: invalid backup file.',
     'toast.exported': 'Backup exported.',
+    'toast.sessionModelSwitched': 'Switched to model "{model}".',
+    'toast.sessionModelMissing':
+      'This chat\'s model is unavailable; switched to "{model}".',
+    'toast.sessionModelUnavailable': "This chat's model is unavailable.",
 
     // Export dialog
     'export.title': 'Export data',
@@ -441,6 +445,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'toast.imported': '备份导入成功。',
     'toast.importFailed': '导入失败：无效的备份文件。',
     'toast.exported': '备份已导出。',
+    'toast.sessionModelSwitched': '已切换到模型「{model}」。',
+    'toast.sessionModelMissing': '该聊天的模型已不存在，已切换为「{model}」。',
+    'toast.sessionModelUnavailable': '该聊天的模型已不存在。',
 
     // Export dialog
     'export.title': '导出数据',

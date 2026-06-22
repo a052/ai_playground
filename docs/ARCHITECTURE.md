@@ -63,6 +63,7 @@ MessageComposer.send()                       (src/components/MessageComposer.tsx
       → store.addMessage(user message)
       → runCompletion(sessionId, config, history)
           → store.addMessage(assistant placeholder, isStreaming: true)
+          → store.setSessionModel(sessionId, config.id)   → records lastUsedConfigId on the chat
           → streamChat({ config, messages, parameters, callbacks })   (src/lib/apiClient.ts)
               → buildRequest()                 → provider-specific {url, headers, body}
               → fetchWithCorsFallback()        → direct fetch, retry via CORS proxy on TypeError
@@ -148,7 +149,7 @@ Holds `configs`, `parameters`, `settings`, `sessions`, `activeSessionId`, plus r
 - **Configs:** `addConfig`, `updateConfig`, `duplicateConfig`, `removeConfig`, `setActiveConfig`.
 - **Parameters:** `setParameter(key, value)`, `resetParameters`.
 - **Settings:** `setTheme`, `toggleTheme`, `setLanguage`, `setCorsProxy`.
-- **Sessions:** `createSession`, `ensureActiveSession`, `deleteSession`, `renameSession`, `setActiveSession`.
+- **Sessions:** `createSession`, `ensureActiveSession`, `deleteSession`, `renameSession`, `setActiveSession`, `setSessionModel` (records the config id last used to generate in a chat, on `ChatSession.lastUsedConfigId`), `openSession` (sets the active session **and** restores its `lastUsedConfigId` as the active config — returns an `OpenSessionResult` of `{ status: 'none' | 'switched' | 'missing', modelName? }` so the sidebar can toast on switch or when the recorded config was deleted).
 - **Messages:** `addMessage` (auto-derives the session title from the first user message), `updateMessage`, `appendToMessage` (accumulates streaming content/reasoning deltas), `deleteMessage`.
 - **Generation control:** `setGenerating`, `setAbortController`, `stopGeneration` (aborts + clears).
 - **Backup:** `exportBackup(scope)`, `importBackup(raw)`, `clearAll`.
@@ -193,7 +194,7 @@ The authoritative reference. Summary:
 - **`ApiConfig`** — `{ id, name, baseUrl, apiKey, modelId, type }`.
 - **`Message`** — `{ id, role, content, reasoning?, attachments?, timestamp, model?, transaction?, isStreaming?, error? }`.
 - **`Attachment`** — `{ id, kind, name, mimeType, dataUrl, size, text? }`. `kind` ∈ image/audio/video/document. Media + native PDF use `dataUrl`; text/code docs use `text` (and an empty `dataUrl`).
-- **`ChatSession`** — `{ id, title, messages, createdAt, updatedAt }`.
+- **`ChatSession`** — `{ id, title, messages, createdAt, updatedAt, lastUsedConfigId? }`. `lastUsedConfigId` is the config id last used to generate in the chat; opening the chat restores it as the active model (see `openSession`).
 - **`HttpTransaction`** — captured request/response (see §4.6).
 - **`Settings`** — `{ theme, language, corsProxy, activeConfigId }`.
 - **`BackupFile`** — `{ version, exportedAt, scope, configs?, parameters?, settings?, sessions? }`.

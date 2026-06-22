@@ -79,6 +79,8 @@ export interface ChatSession {
   messages: Message[]
   createdAt: number
   updatedAt: number
+  /** Config id of the model last used to generate in this chat. */
+  lastUsedConfigId?: string
 }
 
 // ---------------------------------------------------------------------------

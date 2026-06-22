@@ -43,7 +43,7 @@ export function Sidebar() {
   const t = useT()
   const sessions = useAppStore((s) => s.sessions)
   const activeSessionId = useAppStore((s) => s.activeSessionId)
-  const setActiveSession = useAppStore((s) => s.setActiveSession)
+  const openSession = useAppStore((s) => s.openSession)
   const createSession = useAppStore((s) => s.createSession)
   const deleteSession = useAppStore((s) => s.deleteSession)
   const renameSession = useAppStore((s) => s.renameSession)
@@ -76,6 +76,19 @@ export function Sidebar() {
   const commitRename = () => {
     if (editingId) renameSession(editingId, draft.trim() || t('sidebar.untitled'))
     setEditingId(null)
+  }
+
+  const handleOpenSession = (id: string) => {
+    const r = openSession(id)
+    if (r.status === 'switched') {
+      toast.info(t('toast.sessionModelSwitched', { model: r.modelName! }))
+    } else if (r.status === 'missing') {
+      toast.info(
+        r.modelName
+          ? t('toast.sessionModelMissing', { model: r.modelName })
+          : t('toast.sessionModelUnavailable'),
+      )
+    }
   }
 
   const onImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +171,7 @@ export function Sidebar() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveSession(s.id)}
+                        onClick={() => handleOpenSession(s.id)}
                         className="min-w-0 flex-1 truncate text-left"
                       >
                         {s.title || t('sidebar.untitled')}

@@ -33,6 +33,12 @@ function scheduleSessionSave(sessions: ChatSession[]) {
   saveTimer = setTimeout(() => void saveSessions(sessions), 600)
 }
 
+/** Outcome of opening a session, used by the UI to decide which toast to show. */
+export interface OpenSessionResult {
+  status: 'none' | 'switched' | 'missing'
+  modelName?: string
+}
+
 interface AppState {
   // data
   configs: ApiConfig[]
@@ -75,6 +81,8 @@ interface AppState {
   deleteSession: (id: string) => void
   renameSession: (id: string, title: string) => void
   setActiveSession: (id: string) => void
+  setSessionModel: (sessionId: string, configId: string) => void
+  openSession: (id: string) => OpenSessionResult
 
   // messages
   addMessage: (sessionId: string, message: Message) => void
@@ -272,6 +280,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ sessions })
   },
   setActiveSession: (id) => set({ activeSessionId: id }),
+  setSessionModel: (sessionId, configId) => {
+    const sessions = patchSession(get().sessions, sessionId, (s) => ({
+      ...s,
+      lastUsedConfigId: configId,
+    }))
+    scheduleSessionSave(sessions)
+    set({ sessions })
+  },
+  openSession: (id) => {
+    const { sessions, settings, configs } = get()
+    const session = sessions.find((s) => s.id === id)
+    get().setActiveSession(id)
+    const recorded = session?.lastUsedConfigId
+    if (!recorded || recorded === settings.activeConfigId) return { status: 'none' }
+    const target = configs.find((c) => c.id === recorded)
+    if (target) {
+      get().setActiveConfig(recorded)
+      return { status: 'switched', modelName: target.name }
+    }
+    const current = configs.find((c) => c.id === settings.activeConfigId)
+    return { status: 'missing', modelName: current?.name }
+  },
 
   // --- messages ------------------------------------------------------------
   addMessage: (sessionId, message) => {
