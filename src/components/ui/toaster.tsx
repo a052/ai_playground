@@ -28,7 +28,7 @@ export function Toaster() {
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               onClick={() => dismiss(t.id)}
               className={cn(
-                'pointer-events-auto flex w-full cursor-pointer items-center gap-2.5 rounded-lg border bg-popover px-3.5 py-2.5 text-sm shadow-lg',
+                'pointer-events-auto flex w-fit max-w-full cursor-pointer items-center gap-2.5 rounded-lg border bg-popover px-3.5 py-2.5 text-sm shadow-lg',
                 t.variant === 'success' && 'border-brand/40',
                 t.variant === 'error' && 'border-destructive/50',
                 t.variant === 'default' && 'border-border',
