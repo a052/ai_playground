@@ -49,6 +49,8 @@ export interface HttpTransaction {
   /** Final accumulated response body (raw SSE or JSON). */
   responseBody?: string
   usedProxy: boolean
+  /** Epoch ms when the request was initiated. */
+  startedAt?: number
   durationMs?: number
   error?: string
 }

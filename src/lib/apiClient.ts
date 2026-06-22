@@ -51,6 +51,7 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     requestHeaders: built.headers,
     requestBody: JSON.stringify(built.body, null, 2),
     usedProxy: false,
+    startedAt: Date.now(),
   }
 
   const start = performance.now()

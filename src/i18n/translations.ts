@@ -205,9 +205,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'inspector.body': 'Body',
     'inspector.status': 'Status',
     'inspector.copyCurl': 'Copy cURL',
+    'inspector.copy': 'Copy',
     'inspector.copied': 'Copied!',
     'inspector.usedProxy': 'via CORS proxy',
     'inspector.duration': 'Duration',
+    'inspector.requestTime': 'Request time',
     'inspector.noResponse': 'No response captured.',
 
     // Generic
@@ -421,9 +423,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'inspector.body': '正文',
     'inspector.status': '状态',
     'inspector.copyCurl': '复制 cURL',
+    'inspector.copy': '复制',
     'inspector.copied': '已复制！',
     'inspector.usedProxy': '经 CORS 代理',
     'inspector.duration': '耗时',
+    'inspector.requestTime': '请求时间',
     'inspector.noResponse': '未捕获到响应。',
 
     // Generic

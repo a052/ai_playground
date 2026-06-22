@@ -118,7 +118,9 @@ These are real constraints baked into the builders — keep them in mind when ed
 
 ### 4.6 Transaction capture
 
-The `HttpTransaction` is constructed before the request (method, URL, headers, pretty-printed body) and completed afterward (status, response headers, accumulated body, `durationMs`, any `error`). It is delivered via `onTransaction` and stored on the assistant `Message`. `src/lib/curlGenerator.ts` turns it into a runnable `curl` command using the **direct** (non-proxied) URL, preserving auth headers, and appends `--no-buffer` for streaming requests.
+The `HttpTransaction` is constructed before the request (method, URL, headers, pretty-printed body, `startedAt` wall-clock timestamp) and completed afterward (status, response headers, accumulated body, `durationMs`, any `error`). It is delivered via `onTransaction` and stored on the assistant `Message`. `src/lib/curlGenerator.ts` turns it into a runnable `curl` command using the **direct** (non-proxied) URL, preserving auth headers, and appends `--no-buffer` for streaming requests.
+
+`HttpInspectorModal.tsx` renders the captured transaction in a wide dialog: the header shows request time + `durationMs`, the Pretty/Raw toggle sits on the same row as the Copy cURL button, and both modes lay the request (left) and response (right) out in two side-by-side columns. Each tab uses a fixed-height (`h-[60vh]`) content region so the dialog never resizes when switching Pretty ↔ Raw, with each pane scrolling internally. Raw panes word-wrap long lines and carry their own Copy button; Pretty JSON bodies render via `CodeBlock` (which has its own copy button). Only the headers the app explicitly sets are visible — browsers do not expose the request headers they auto-add, and CORS hides response headers outside the safelist / `Access-Control-Expose-Headers`.
 
 ---
 

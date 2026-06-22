@@ -30,8 +30,12 @@ export function HttpInspectorModal({ transaction, open, onOpenChange }: Props) {
     () => (transaction ? generateCurl(transaction) : ''),
     [transaction],
   )
-  const raw = useMemo(
-    () => (transaction ? buildRawText(transaction) : ''),
+  const rawRequest = useMemo(
+    () => (transaction ? buildRawRequest(transaction) : ''),
+    [transaction],
+  )
+  const rawResponse = useMemo(
+    () => (transaction ? buildRawResponse(transaction) : ''),
     [transaction],
   )
 
@@ -47,7 +51,7 @@ export function HttpInspectorModal({ transaction, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-6xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-brand" />
@@ -66,6 +70,12 @@ export function HttpInspectorModal({ transaction, open, onOpenChange }: Props) {
                     text={transaction.responseStatusText}
                   />
                 )}
+                {transaction.startedAt != null && (
+                  <span>
+                    {t('inspector.requestTime')}:{' '}
+                    {new Date(transaction.startedAt).toLocaleTimeString()}
+                  </span>
+                )}
                 {transaction.durationMs != null && (
                   <span>
                     {t('inspector.duration')}: {transaction.durationMs}ms
@@ -83,8 +93,12 @@ export function HttpInspectorModal({ transaction, open, onOpenChange }: Props) {
         </DialogHeader>
 
         {transaction && (
-          <>
-            <div className="flex justify-end">
+          <Tabs defaultValue="pretty" className="min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <TabsList>
+                <TabsTrigger value="pretty">{t('inspector.pretty')}</TabsTrigger>
+                <TabsTrigger value="raw">{t('inspector.raw')}</TabsTrigger>
+              </TabsList>
               <Button
                 size="sm"
                 variant={copied ? 'brand' : 'outline'}
@@ -109,43 +123,48 @@ export function HttpInspectorModal({ transaction, open, onOpenChange }: Props) {
               </Button>
             </div>
 
-            <Tabs defaultValue="pretty" className="min-w-0">
-              <TabsList>
-                <TabsTrigger value="pretty">{t('inspector.pretty')}</TabsTrigger>
-                <TabsTrigger value="raw">{t('inspector.raw')}</TabsTrigger>
-              </TabsList>
+            <TabsContent value="pretty">
+              <div className="grid h-[60vh] grid-cols-1 grid-rows-2 gap-4 md:grid-cols-2 md:grid-rows-1">
+                <Section label={t('inspector.request')}>
+                  <HeaderTable headers={transaction.requestHeaders} />
+                  <BodyView body={transaction.requestBody} language="json" />
+                </Section>
+                <Section label={t('inspector.response')}>
+                  {transaction.responseHeaders ? (
+                    <HeaderTable headers={transaction.responseHeaders} />
+                  ) : null}
+                  {transaction.responseBody ? (
+                    <BodyView body={transaction.responseBody} language="json" />
+                  ) : (
+                    <p className="py-2 text-sm text-muted-foreground">
+                      {t('inspector.noResponse')}
+                    </p>
+                  )}
+                </Section>
+              </div>
+            </TabsContent>
 
-              <TabsContent value="pretty">
-                <div className="max-h-[55vh] space-y-4 overflow-y-auto scrollbar-thin pr-1">
-                  <Section label={t('inspector.request')}>
-                    <HeaderTable headers={transaction.requestHeaders} />
-                    <BodyView body={transaction.requestBody} language="json" />
-                  </Section>
-                  <Section label={t('inspector.response')}>
-                    {transaction.responseHeaders ? (
-                      <HeaderTable headers={transaction.responseHeaders} />
-                    ) : null}
-                    {transaction.responseBody ? (
-                      <BodyView
-                        body={transaction.responseBody}
-                        language="json"
-                      />
-                    ) : (
-                      <p className="py-2 text-sm text-muted-foreground">
-                        {t('inspector.noResponse')}
-                      </p>
-                    )}
-                  </Section>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="raw">
-                <pre className="max-h-[55vh] overflow-auto scrollbar-thin rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-                  {raw}
-                </pre>
-              </TabsContent>
-            </Tabs>
-          </>
+            <TabsContent value="raw">
+              <div className="grid h-[60vh] grid-cols-1 grid-rows-2 gap-4 md:grid-cols-2 md:grid-rows-1">
+                <Section
+                  label={t('inspector.request')}
+                  action={<CopyButton text={rawRequest} />}
+                >
+                  <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                    {rawRequest}
+                  </pre>
+                </Section>
+                <Section
+                  label={t('inspector.response')}
+                  action={<CopyButton text={rawResponse} />}
+                >
+                  <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                    {rawResponse}
+                  </pre>
+                </Section>
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </DialogContent>
     </Dialog>
@@ -170,18 +189,58 @@ function StatusPill({ status, text }: { status: number; text?: string }) {
 
 function Section({
   label,
+  action,
   children,
 }: {
   label: string
+  action?: ReactNode
   children: ReactNode
 }) {
   return (
-    <div className="rounded-lg border border-border">
-      <div className="border-b border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+    <div className="flex min-h-0 flex-col rounded-lg border border-border">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-1.5">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        {action}
       </div>
-      <div className="p-3">{children}</div>
+      <div className="min-h-0 flex-1 overflow-auto scrollbar-thin p-3">
+        {children}
+      </div>
     </div>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const t = useT()
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-brand" />
+          {t('inspector.copied')}
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" />
+          {t('inspector.copy')}
+        </>
+      )}
+    </button>
   )
 }
 
@@ -235,7 +294,7 @@ function maskSecret(key: string, value: string): string {
   return value
 }
 
-function buildRawText(tx: HttpTransaction): string {
+function buildRawRequest(tx: HttpTransaction): string {
   const lines: string[] = []
   let path = tx.requestUrl
   let host = ''
@@ -255,10 +314,11 @@ function buildRawText(tx: HttpTransaction): string {
   lines.push('')
   lines.push(tx.requestBody)
 
-  lines.push('')
-  lines.push('─'.repeat(40))
-  lines.push('')
+  return lines.join('\n')
+}
 
+function buildRawResponse(tx: HttpTransaction): string {
+  const lines: string[] = []
   if (tx.responseStatus != null) {
     lines.push(
       `HTTP/1.1 ${tx.responseStatus} ${tx.responseStatusText ?? ''}`.trim(),
