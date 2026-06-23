@@ -30,11 +30,16 @@ ai_playground/
     ├── index.css              # Tailwind layers + CSS theme tokens + KaTeX
     ├── types/index.ts         # All domain types (source of truth)
     ├── lib/                   # Core logic (no React)
-    │   ├── apiClient.ts       # Provider abstraction: streamChat() + builders/handlers
+    │   ├── apiClient.ts       # Provider abstraction: streamChat() + builders/handlers + tool calling
+    │   ├── http.ts            # Shared fetch+CORS layer: BuiltRequest, fetchWithCorsFallback, runHttp
+    │   ├── agent.ts           # Agentic tool-calling loop (web_search / fetch_url) + ReAct fallback
+    │   ├── searchClient.ts    # Web-search adapters (Tavily/Brave/Serper/Exa/Custom) + runWebSearch
+    │   ├── urlFetcher.ts      # runFetchUrl: Jina Reader → direct/proxy + htmlToText
+    │   ├── toolContext.ts     # Shared ToolContext / ToolExecResult types
     │   ├── thinkSplitter.ts   # Streaming <think> tag state machine
     │   ├── storage.ts         # localStorage + IndexedDB (localforage) persistence
     │   ├── backup.ts          # Backup build/parse + field-by-field sanitization
-    │   ├── defaults.ts        # DEFAULT_PARAMETERS, DEFAULT_ENABLED, API templates
+    │   ├── defaults.ts        # DEFAULT_PARAMETERS, DEFAULT_ENABLED, API + search templates
     │   ├── curlGenerator.ts   # HttpTransaction → curl command
     │   └── utils.ts           # cn(), uid(), file helpers, attachment detection
     ├── store/                 # Zustand stores
@@ -115,13 +120,25 @@ These are real constraints baked into the builders — keep them in mind when ed
 
 ### 4.5 CORS fallback
 
-`fetchWithCorsFallback(built, corsProxy, signal, tx)` tries a direct `fetch()` first. On a network `TypeError` (typically a CORS rejection), if a `corsProxy` prefix is configured, it retries with the proxy prepended. It records `tx.usedProxy` and `tx.effectiveUrl` either way.
+`fetchWithCorsFallback(built, corsProxy, signal, tx)` — now in **`src/lib/http.ts`** (shared by the chat client and the web-search/url-fetch tools) — tries a direct `fetch()` first. On a network `TypeError` (typically a CORS rejection), if a `corsProxy` prefix is configured, it retries with the proxy prepended. It records `tx.usedProxy` and `tx.effectiveUrl` either way. `http.ts` also exports `BuiltRequest` (generalized for GET/HEAD + object-or-string bodies), `headersToObject`, `safeReadText`, `formatHttpError`, and `runHttp(built, corsProxy, signal, apiType)` which runs a one-shot request and returns a fully-populated `HttpTransaction` — the single place that guarantees every tool HTTP call is inspectable.
 
 ### 4.6 Transaction capture
 
 The `HttpTransaction` is constructed before the request (method, URL, headers, pretty-printed body, `startedAt` wall-clock timestamp) and completed afterward (status, response headers, accumulated body, `durationMs`, any `error`). It is delivered via `onTransaction` and stored on the assistant `Message`. `src/lib/curlGenerator.ts` turns it into a runnable `curl` command using the **direct** (non-proxied) URL, preserving auth headers, and appends `--no-buffer` for streaming requests.
 
 `HttpInspectorModal.tsx` renders the captured transaction in a wide dialog: the header shows request time + `durationMs`, the Pretty/Raw toggle sits on the same row as the Copy cURL button, and both modes lay the request (left) and response (right) out in two side-by-side columns. Each tab uses a fixed-height (`h-[60vh]`) content region so the dialog never resizes when switching Pretty ↔ Raw, with each pane scrolling internally. Raw panes word-wrap long lines and carry their own Copy button; Pretty JSON bodies render via `CodeBlock` (which has its own copy button). Only the headers the app explicitly sets are visible — browsers do not expose the request headers they auto-add, and CORS hides response headers outside the safelist / `Access-Control-Expose-Headers`.
+
+### 4.7 Web search & agentic tool calling
+
+When web search is enabled, the model can call two tools — `web_search(query)` and `fetch_url(url)` — in a multi-round agentic loop. The pieces:
+
+- **`streamChat`** accepts `tools?: ToolDef[]` + `promptToolMode?` and now returns a `StreamResult` (`finish: 'stop' | 'tool_calls' | 'error' | 'aborted'`, plus `toolCalls` / `errorStatus`). The three builders inject native tool fields (OpenAI `tools`/`tool_choice`, Claude `tools`/`input_schema`, Gemini `functionDeclarations`). The three SSE handlers became objects (`{ handle, finalize }`) that accumulate streamed tool-call fragments (OpenAI `delta.tool_calls[].index`, Claude `content_block_start`/`input_json_delta`, Gemini `functionCall` parts); `parseFinal` does the same for non-streaming.
+- **`src/lib/agent.ts`** (`runAgenticCompletion`) is the orchestrator: call the model with tools → if it requested tools, execute each via `runWebSearch` / `runFetchUrl`, capture an `HttpTransaction` per call, push a `ToolRound` onto the assistant message (live status), feed results back, and loop until a final answer or `maxIterations` (then one forced no-tools answer). It respects the existing `AbortController` and falls back to a **prompt-based ReAct** path (`buildReactSystemPrompt` + `parseReactAction`) if native tools 400 on the first round.
+- **Replay**: an assistant `Message.toolRounds` is expanded back into each provider's native request+result sequence by `openAIToolMessages` / `claudeToolMessages` / `geminiToolContents` (ReAct rounds, `native:false`, serialize as plain text + `OBSERVATION:` turns instead). One assistant message holds all rounds, so `regenerate()` is unchanged.
+- **Executors**: `src/lib/searchClient.ts` has per-provider adapters (Tavily/Brave/Serper/Exa/Custom) + `runWebSearch`; `src/lib/urlFetcher.ts` has `runFetchUrl` (Jina Reader → direct/proxy + `htmlToText`, truncated). Both go through `runHttp`, so search/fetch calls appear in the inspector. Shared exec types live in `src/lib/toolContext.ts`.
+- **Caveat**: Claude thinking is disabled during the tool loop (replaying signed thinking blocks isn't supported yet).
+
+UI: the composer `+` menu (`MessageComposer.tsx`) toggles `searchSettings.enabled`; `ToolCallCard.tsx` renders live "searching/reading" cards above the bubble in `ChatMessage.tsx` (each with an inspect button); `SearchApiEditorDialog.tsx` + a "Web search" group in `SettingsDialog.tsx` manage providers. Search configs/settings persist via `searchConfigsStorage`/`searchSettingsStorage` and round-trip through the `configs`-scope backup.
 
 ---
 
@@ -176,10 +193,10 @@ A deliberate split by size and access pattern:
 
 | Backing store | Contents | Keys | Notes |
 | --- | --- | --- | --- |
-| `localStorage` | API configs, parameters, settings, prompt/reasoning templates | `ai-playground:configs`, `ai-playground:parameters`, `ai-playground:settings`, `ai-playground:promptTemplates`, `ai-playground:reasoningTemplates` | Small, synchronous JSON. |
+| `localStorage` | API configs, parameters, settings, prompt/reasoning templates, search configs + settings | `ai-playground:configs`, `ai-playground:parameters`, `ai-playground:settings`, `ai-playground:promptTemplates`, `ai-playground:reasoningTemplates`, `ai-playground:searchConfigs`, `ai-playground:searchSettings` | Small, synchronous JSON. |
 | `IndexedDB` (localforage) | Chat sessions (with base64 media/PDF) | DB `ai-playground`, store `sessions`, key `sessions` | Large; writes **debounced ~600ms** via `scheduleSessionSave`. |
 
-`normalizeParameters` (in `src/lib/defaults.ts`) deep-merges stored/imported params onto `DEFAULT_PARAMETERS` so older saves missing newer fields (e.g. `stream`, `enabled`, `maxCompletionTokens`) don't break the app.
+`normalizeParameters` (in `src/lib/defaults.ts`) deep-merges stored/imported params onto `DEFAULT_PARAMETERS` so older saves missing newer fields (e.g. `stream`, `enabled`, `maxCompletionTokens`) don't break the app. `normalizeSearchSettings` does the same for `SearchSettings`. Search configs + settings are included in the `configs` (and `all`) backup scope and sanitized field-by-field on import (`sanitizeSearchConfigs`).
 
 ### Backup / restore — `src/lib/backup.ts`
 

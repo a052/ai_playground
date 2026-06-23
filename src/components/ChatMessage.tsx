@@ -14,19 +14,21 @@ import {
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { ReasoningBlock } from '@/components/ReasoningBlock'
 import { ImageLightbox } from '@/components/ImageLightbox'
+import { ToolCallCard } from '@/components/ToolCallCard'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useT } from '@/i18n'
-import type { Attachment, Message } from '@/types'
+import type { Attachment, HttpTransaction, Message } from '@/types'
 import { cn, formatBytes, formatTime } from '@/lib/utils'
 
 interface ChatMessageProps {
   message: Message
   onRegenerate?: () => void
   onViewRaw?: () => void
+  onInspectTx?: (tx: HttpTransaction) => void
   onDelete?: () => void
 }
 
@@ -34,6 +36,7 @@ export const ChatMessage = memo(function ChatMessage({
   message,
   onRegenerate,
   onViewRaw,
+  onInspectTx,
   onDelete,
 }: ChatMessageProps) {
   const t = useT()
@@ -104,6 +107,56 @@ export const ChatMessage = memo(function ChatMessage({
             {message.attachments.map((a) => (
               <AttachmentPreview key={a.id} attachment={a} />
             ))}
+          </div>
+        )}
+
+        {/* agentic tool rounds */}
+        {!isUser && message.toolRounds && message.toolRounds.length > 0 && (
+          <div className="flex w-full flex-col gap-2">
+            {message.toolRounds.map((round, ri) => {
+              const inspectRound =
+                onInspectTx && round.transaction
+                  ? () => onInspectTx(round.transaction!)
+                  : undefined
+              return (
+                <div key={ri} className="flex flex-col gap-2">
+                  {round.reasoning ? (
+                    <ReasoningBlock
+                      reasoning={round.reasoning}
+                      streaming={false}
+                      onViewRaw={inspectRound}
+                    />
+                  ) : (
+                    inspectRound && (
+                      <div className="flex">
+                        <button
+                          type="button"
+                          onClick={inspectRound}
+                          className="flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <Terminal className="h-3.5 w-3.5" />
+                          {t('chat.viewOriginal')}
+                        </button>
+                      </div>
+                    )
+                  )}
+                  {round.content && (
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                      {round.content}
+                    </p>
+                  )}
+                  {round.toolCalls.map((tc) => (
+                    <ToolCallCard
+                      key={tc.id}
+                      toolCall={tc}
+                      onInspect={
+                        onInspectTx ? (tx) => tx && onInspectTx(tx) : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )
+            })}
           </div>
         )}
 

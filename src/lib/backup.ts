@@ -5,11 +5,15 @@ import type {
   ChatSession,
   ModelParameters,
   PromptTemplate,
+  SearchConfig,
+  SearchProvider,
+  SearchSettings,
   Settings,
 } from '@/types'
 import {
   DEFAULT_SETTINGS,
   normalizeParameters,
+  normalizeSearchSettings,
 } from '@/lib/defaults'
 
 export const BACKUP_VERSION = 1
@@ -20,6 +24,8 @@ export interface BackupData {
   settings: Settings
   promptTemplates: PromptTemplate[]
   reasoningTemplates: PromptTemplate[]
+  searchConfigs: SearchConfig[]
+  searchSettings: SearchSettings
   sessions: ChatSession[]
 }
 
@@ -36,6 +42,8 @@ export function buildBackup(data: BackupData, scope: BackupScope): BackupFile {
     backup.settings = data.settings
     backup.promptTemplates = data.promptTemplates
     backup.reasoningTemplates = data.reasoningTemplates
+    backup.searchConfigs = data.searchConfigs
+    backup.searchSettings = data.searchSettings
   }
   if (scope === 'all' || scope === 'chats') {
     backup.sessions = data.sessions
@@ -77,6 +85,12 @@ export function parseBackup(raw: string): BackupFile {
     'reasoningTemplates' in json
       ? sanitizeTemplates(json.reasoningTemplates)
       : undefined
+  const searchConfigs =
+    'searchConfigs' in json ? sanitizeSearchConfigs(json.searchConfigs) : undefined
+  const searchSettings =
+    'searchSettings' in json
+      ? normalizeSearchSettings(json.searchSettings)
+      : undefined
 
   // Infer scope: explicit field wins; otherwise derive from present sections.
   let scope: BackupScope
@@ -104,8 +118,32 @@ export function parseBackup(raw: string): BackupFile {
     settings,
     promptTemplates,
     reasoningTemplates,
+    searchConfigs,
+    searchSettings,
     sessions,
   }
+}
+
+function sanitizeSearchConfigs(value: unknown): SearchConfig[] {
+  if (!Array.isArray(value)) return []
+  const providers: SearchProvider[] = ['tavily', 'brave', 'serper', 'exa', 'custom']
+  const valid: SearchConfig[] = []
+  for (const c of value) {
+    if (!isObject(c)) continue
+    if (typeof c.id !== 'string') continue
+    const provider = providers.includes(c.provider as SearchProvider)
+      ? (c.provider as SearchProvider)
+      : 'custom'
+    valid.push({
+      id: c.id,
+      name: typeof c.name === 'string' ? c.name : 'Untitled',
+      provider,
+      apiKey: typeof c.apiKey === 'string' ? c.apiKey : '',
+      baseUrl: typeof c.baseUrl === 'string' ? c.baseUrl : '',
+      extraParams: typeof c.extraParams === 'string' ? c.extraParams : '',
+    })
+  }
+  return valid
 }
 
 function sanitizeConfigs(value: unknown): ApiConfig[] {

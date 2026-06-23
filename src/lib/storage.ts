@@ -4,6 +4,8 @@ import type {
   ChatSession,
   ModelParameters,
   PromptTemplate,
+  SearchConfig,
+  SearchSettings,
   Settings,
 } from '@/types'
 
@@ -54,6 +56,8 @@ const LS_PARAMS = 'ai-playground:parameters'
 const LS_SETTINGS = 'ai-playground:settings'
 const LS_PROMPT_TEMPLATES = 'ai-playground:promptTemplates'
 const LS_REASONING_TEMPLATES = 'ai-playground:reasoningTemplates'
+const LS_SEARCH_CONFIGS = 'ai-playground:searchConfigs'
+const LS_SEARCH_SETTINGS = 'ai-playground:searchSettings'
 
 function readJSON<T>(key: string, fallback: T): T {
   try {
@@ -103,10 +107,24 @@ export const reasoningTemplatesStorage = {
     writeJSON(LS_REASONING_TEMPLATES, templates),
 }
 
+export const searchConfigsStorage = {
+  load: (fallback: SearchConfig[]) =>
+    readJSON<SearchConfig[]>(LS_SEARCH_CONFIGS, fallback),
+  save: (configs: SearchConfig[]) => writeJSON(LS_SEARCH_CONFIGS, configs),
+}
+
+export const searchSettingsStorage = {
+  load: (fallback: SearchSettings) =>
+    readJSON<SearchSettings>(LS_SEARCH_SETTINGS, fallback),
+  save: (settings: SearchSettings) => writeJSON(LS_SEARCH_SETTINGS, settings),
+}
+
 export function clearLocalConfig(): void {
   localStorage.removeItem(LS_CONFIGS)
   localStorage.removeItem(LS_PARAMS)
   localStorage.removeItem(LS_SETTINGS)
   localStorage.removeItem(LS_PROMPT_TEMPLATES)
   localStorage.removeItem(LS_REASONING_TEMPLATES)
+  localStorage.removeItem(LS_SEARCH_CONFIGS)
+  localStorage.removeItem(LS_SEARCH_SETTINGS)
 }

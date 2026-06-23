@@ -9,15 +9,26 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowUp,
+  Check,
   FileAudio,
   FileText,
   FileVideo,
+  Globe,
   ImageIcon,
   Paperclip,
+  Plus,
   Square,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useAppStore } from '@/store/useAppStore'
+import { useUiStore } from '@/store/useUiStore'
 import { useT } from '@/i18n'
 import { toast } from '@/store/useToast'
 import type { Attachment } from '@/types'
@@ -51,6 +62,20 @@ export function MessageComposer({
   const [dragging, setDragging] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const webSearchEnabled = useAppStore((s) => s.searchSettings.enabled)
+  const searchConfigs = useAppStore((s) => s.searchConfigs)
+  const toggleWebSearch = useAppStore((s) => s.toggleWebSearch)
+  const openSettings = useUiStore((s) => s.openSettings)
+
+  const onWebSearchClick = () => {
+    if (searchConfigs.length === 0) {
+      toast.error(t('chat.webSearchNoProvider'))
+      openSettings()
+      return
+    }
+    toggleWebSearch()
+  }
 
   const resize = () => {
     const el = textareaRef.current
@@ -192,6 +217,24 @@ export function MessageComposer({
           </div>
         )}
 
+        {/* active web-search pill */}
+        {webSearchEnabled && (
+          <div className="flex items-center gap-1.5 px-2.5 pt-2">
+            <span className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
+              <Globe className="h-3 w-3" />
+              {t('chat.webSearchOn')}
+              <button
+                type="button"
+                onClick={toggleWebSearch}
+                className="ml-0.5 rounded-full hover:bg-brand/20"
+                aria-label={t('chat.webSearch')}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          </div>
+        )}
+
         <div className="flex items-end gap-2 p-2">
           <input
             ref={fileRef}
@@ -201,6 +244,27 @@ export function MessageComposer({
             className="hidden"
             onChange={onFileInput}
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-muted-foreground"
+                disabled={disabled}
+                title={t('chat.tools')}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onClick={onWebSearchClick}>
+                <Globe className="h-4 w-4" />
+                <span className="flex-1">{t('chat.webSearch')}</span>
+                {webSearchEnabled && <Check className="h-4 w-4 text-brand" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             type="button"
             variant="ghost"

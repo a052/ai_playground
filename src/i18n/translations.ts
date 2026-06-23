@@ -254,6 +254,45 @@ export const translations: Record<Language, Record<string, string>> = {
     'templates.deleteConfirm': 'Delete this template?',
     'templates.deleteDesc':
       "This template will be permanently removed. This action can't be undone.",
+
+    // Web search (composer + tool cards)
+    'chat.tools': 'Tools',
+    'chat.webSearch': 'Web Search',
+    'chat.webSearchOn': 'Web search on',
+    'chat.webSearchNoProvider': 'Add a search provider in Settings first.',
+    'chat.searching': 'Searching the web',
+    'chat.reading': 'Reading page',
+    'chat.fetchUrl': 'Read URL',
+
+    // Web search (settings)
+    'settings.webSearch': 'Web search',
+    'settings.webSearchEnable': 'Enable web search',
+    'settings.searchNoProvider': 'No search providers configured yet.',
+    'settings.searchDepth': 'Search depth',
+    'settings.searchDepthSnippets': 'Snippets (fetch on demand)',
+    'settings.searchDepthFetch': 'Auto-fetch top results',
+    'settings.topN': 'Pages to fetch',
+    'settings.maxResults': 'Results per search',
+    'settings.maxIterations': 'Max tool rounds',
+    'settings.maxPageChars': 'Max page characters',
+
+    // Search provider editor
+    'search.add': 'Add search provider',
+    'search.edit': 'Edit search provider',
+    'search.delete': 'Delete provider',
+    'search.deleteDesc':
+      "This search provider will be permanently removed. This action can't be undone.",
+    'search.editorDesc': 'Configure a web-search API.',
+    'search.name': 'Display name',
+    'search.namePlaceholder': 'My search provider',
+    'search.provider': 'Provider',
+    'search.providerCustom': 'Custom',
+    'search.endpoint': 'Endpoint',
+    'search.endpointOptional': 'Endpoint (optional override)',
+    'search.apiKey': 'API key',
+    'search.extraParams': 'Extra params (JSON)',
+    'search.required': 'A display name is required.',
+    'search.endpointRequired': 'A custom provider needs an endpoint URL.',
   },
 
   zh: {
@@ -491,6 +530,44 @@ export const translations: Record<Language, Record<string, string>> = {
     'templates.titleRequired': '标题不能为空。',
     'templates.deleteConfirm': '确定删除此模板？',
     'templates.deleteDesc': '此模板将被永久删除，操作无法撤销。',
+
+    // Web search (composer + tool cards)
+    'chat.tools': '工具',
+    'chat.webSearch': '联网搜索',
+    'chat.webSearchOn': '联网搜索已开启',
+    'chat.webSearchNoProvider': '请先在设置中添加搜索服务商。',
+    'chat.searching': '正在搜索网络',
+    'chat.reading': '正在读取网页',
+    'chat.fetchUrl': '读取网址',
+
+    // Web search (settings)
+    'settings.webSearch': '联网搜索',
+    'settings.webSearchEnable': '启用联网搜索',
+    'settings.searchNoProvider': '尚未配置搜索服务商。',
+    'settings.searchDepth': '搜索深度',
+    'settings.searchDepthSnippets': '仅摘要（按需读取）',
+    'settings.searchDepthFetch': '自动读取前几条结果',
+    'settings.topN': '读取页数',
+    'settings.maxResults': '每次结果数',
+    'settings.maxIterations': '最大工具轮数',
+    'settings.maxPageChars': '网页最大字符数',
+
+    // Search provider editor
+    'search.add': '添加搜索服务商',
+    'search.edit': '编辑搜索服务商',
+    'search.delete': '删除服务商',
+    'search.deleteDesc': '该搜索服务商将被永久删除，操作无法撤销。',
+    'search.editorDesc': '配置一个联网搜索 API。',
+    'search.name': '显示名称',
+    'search.namePlaceholder': '我的搜索服务商',
+    'search.provider': '服务商',
+    'search.providerCustom': '自定义',
+    'search.endpoint': '接口地址',
+    'search.endpointOptional': '接口地址（可选覆盖）',
+    'search.apiKey': 'API 密钥',
+    'search.extraParams': '额外参数（JSON）',
+    'search.required': '请填写显示名称。',
+    'search.endpointRequired': '自定义服务商需要填写接口地址。',
   },
 }
 

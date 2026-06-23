@@ -2,6 +2,9 @@ import type {
   ApiConfig,
   ApiType,
   ModelParameters,
+  SearchConfig,
+  SearchProvider,
+  SearchSettings,
   Settings,
   ToggleableParam,
 } from '@/types'
@@ -134,5 +137,67 @@ export function emptyConfig(): ApiConfig {
     baseUrl: '',
     modelId: '',
     apiKey: '',
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Web search
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
+  enabled: false,
+  activeConfigId: null,
+  depth: 'snippets',
+  topN: 3,
+  maxResults: 5,
+  maxIterations: 6,
+  maxPageChars: 200000,
+}
+
+/** Deep-merge a stored/imported search-settings blob onto the defaults. */
+export function normalizeSearchSettings(raw: unknown): SearchSettings {
+  if (typeof raw !== 'object' || raw === null) return { ...DEFAULT_SEARCH_SETTINGS }
+  const r = raw as Partial<SearchSettings>
+  const merged: SearchSettings = { ...DEFAULT_SEARCH_SETTINGS, ...r }
+  if (merged.depth !== 'snippets' && merged.depth !== 'fetch_top_n')
+    merged.depth = DEFAULT_SEARCH_SETTINGS.depth
+  merged.topN = Number.isFinite(merged.topN) ? merged.topN : DEFAULT_SEARCH_SETTINGS.topN
+  merged.maxResults = Number.isFinite(merged.maxResults)
+    ? merged.maxResults
+    : DEFAULT_SEARCH_SETTINGS.maxResults
+  merged.maxIterations = Number.isFinite(merged.maxIterations)
+    ? merged.maxIterations
+    : DEFAULT_SEARCH_SETTINGS.maxIterations
+  merged.maxPageChars = Number.isFinite(merged.maxPageChars)
+    ? merged.maxPageChars
+    : DEFAULT_SEARCH_SETTINGS.maxPageChars
+  return merged
+}
+
+/** Quick-add presets for the search-config editor. */
+export interface SearchTemplate {
+  label: string
+  provider: SearchProvider
+  baseUrl?: string
+  /** Hint shown under the API-key field (e.g. where to get a key). */
+  hint?: string
+}
+
+export const SEARCH_TEMPLATES: SearchTemplate[] = [
+  { label: 'Tavily', provider: 'tavily' },
+  { label: 'Brave', provider: 'brave' },
+  { label: 'Serper', provider: 'serper' },
+  { label: 'Exa', provider: 'exa' },
+  { label: 'Custom', provider: 'custom' },
+]
+
+export function emptySearchConfig(): SearchConfig {
+  return {
+    id: uid('sc_'),
+    name: '',
+    provider: 'tavily',
+    apiKey: '',
+    baseUrl: '',
+    extraParams: '',
   }
 }

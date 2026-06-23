@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { streamChat } from '@/lib/apiClient'
+import { runAgenticCompletion } from '@/lib/agent'
 import { uid } from '@/lib/utils'
 import type { ApiConfig, Attachment, Message } from '@/types'
 
@@ -30,37 +31,57 @@ export function useStream() {
       store.setAbortController(controller)
       store.setGenerating(true)
 
-      await streamChat({
-        config,
-        parameters: store.parameters,
-        messages: history,
-        corsProxy: store.settings.corsProxy,
-        signal: controller.signal,
-        callbacks: {
-          onContent: (delta) =>
-            useAppStore
-              .getState()
-              .appendToMessage(sessionId, assistantId, { content: delta }),
-          onReasoning: (delta) =>
-            useAppStore
-              .getState()
-              .appendToMessage(sessionId, assistantId, { reasoning: delta }),
-          onTransaction: (tx) =>
-            useAppStore
-              .getState()
-              .updateMessage(sessionId, assistantId, { transaction: tx }),
-          onError: (message) =>
-            useAppStore
-              .getState()
-              .updateMessage(sessionId, assistantId, { error: message }),
-          onDone: () => {
-            const s = useAppStore.getState()
-            s.updateMessage(sessionId, assistantId, { isStreaming: false })
-            s.setGenerating(false)
-            s.setAbortController(null)
-          },
-        },
-      })
+      const { searchSettings, searchConfigs } = store
+      const webSearchActive =
+        searchSettings.enabled && searchConfigs.length > 0
+
+      try {
+        if (webSearchActive) {
+          await runAgenticCompletion({
+            sessionId,
+            assistantId,
+            config,
+            parameters: store.parameters,
+            baseHistory: history,
+            corsProxy: store.settings.corsProxy,
+            signal: controller.signal,
+            searchConfigs,
+            searchSettings,
+          })
+        } else {
+          await streamChat({
+            config,
+            parameters: store.parameters,
+            messages: history,
+            corsProxy: store.settings.corsProxy,
+            signal: controller.signal,
+            callbacks: {
+              onContent: (delta) =>
+                useAppStore
+                  .getState()
+                  .appendToMessage(sessionId, assistantId, { content: delta }),
+              onReasoning: (delta) =>
+                useAppStore
+                  .getState()
+                  .appendToMessage(sessionId, assistantId, { reasoning: delta }),
+              onTransaction: (tx) =>
+                useAppStore
+                  .getState()
+                  .updateMessage(sessionId, assistantId, { transaction: tx }),
+              onError: (message) =>
+                useAppStore
+                  .getState()
+                  .updateMessage(sessionId, assistantId, { error: message }),
+              onDone: () => {},
+            },
+          })
+        }
+      } finally {
+        const s = useAppStore.getState()
+        s.updateMessage(sessionId, assistantId, { isStreaming: false })
+        s.setGenerating(false)
+        s.setAbortController(null)
+      }
     },
     [],
   )

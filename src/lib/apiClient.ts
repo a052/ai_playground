@@ -4,20 +4,27 @@ import type {
   HttpTransaction,
   Message,
   ModelParameters,
+  ParsedToolCall,
   StreamCallbacks,
+  StreamResult,
+  ToolCall,
+  ToolDef,
+  ToolRound,
 } from '@/types'
 import { createThinkSplitter } from '@/lib/thinkSplitter'
 import {
   formatDocText,
   mimeFromDataUrl,
   stripDataUrlPrefix,
+  uid,
 } from '@/lib/utils'
-
-interface BuiltRequest {
-  url: string
-  headers: Record<string, string>
-  body: Record<string, unknown>
-}
+import {
+  fetchWithCorsFallback,
+  formatHttpError,
+  headersToObject,
+  safeReadText,
+  type BuiltRequest,
+} from '@/lib/http'
 
 export interface ChatRequest {
   config: ApiConfig
@@ -26,13 +33,17 @@ export interface ChatRequest {
   corsProxy: string
   signal: AbortSignal
   callbacks: StreamCallbacks
+  /** Tool definitions exposed to the model (native function calling). */
+  tools?: ToolDef[]
+  /** When true, skip native tools (the orchestrator uses a ReAct prompt). */
+  promptToolMode?: boolean
 }
 
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
-export async function streamChat(req: ChatRequest): Promise<void> {
+export async function streamChat(req: ChatRequest): Promise<StreamResult> {
   const { config, callbacks, parameters } = req
   let built: BuiltRequest
   try {
@@ -40,7 +51,7 @@ export async function streamChat(req: ChatRequest): Promise<void> {
   } catch (err) {
     callbacks.onError((err as Error).message)
     callbacks.onDone()
-    return
+    return { finish: 'error' }
   }
 
   const tx: HttpTransaction = {
@@ -63,9 +74,10 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     tx.error = (err as Error).message
     tx.durationMs = Math.round(performance.now() - start)
     callbacks.onTransaction(tx)
-    if (!req.signal.aborted) callbacks.onError(tx.error)
+    const aborted = req.signal.aborted
+    if (!aborted) callbacks.onError(tx.error)
     callbacks.onDone()
-    return
+    return { finish: aborted ? 'aborted' : 'error' }
   }
 
   tx.responseStatus = res.status
@@ -79,7 +91,7 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     callbacks.onTransaction(tx)
     callbacks.onError(formatHttpError(res.status, res.statusText, text))
     callbacks.onDone()
-    return
+    return { finish: 'error', errorStatus: res.status }
   }
 
   // --- non-streaming: read the whole body and emit once -------------------
@@ -87,22 +99,29 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     const text = await safeReadText(res)
     tx.responseBody = text
     tx.durationMs = Math.round(performance.now() - start)
+    let toolCalls: ParsedToolCall[] | null = null
     try {
       const json = JSON.parse(text)
-      parseFinal(config.type, json, callbacks)
+      toolCalls = parseFinal(config.type, json, callbacks)
     } catch (err) {
       if (!req.signal.aborted) callbacks.onError((err as Error).message)
     }
     callbacks.onTransaction(tx)
+    if (toolCalls && toolCalls.length) {
+      callbacks.onToolCalls?.(toolCalls)
+      callbacks.onDone()
+      return { finish: 'tool_calls', toolCalls }
+    }
     callbacks.onDone()
-    return
+    return { finish: 'stop' }
   }
 
   // --- streaming: parse SSE -----------------------------------------------
   const splitter = createThinkSplitter(callbacks.onContent, callbacks.onReasoning)
-  const handleEvent = pickEventHandler(config.type, callbacks, splitter)
+  const handler = pickEventHandler(config.type, callbacks, splitter)
 
   let raw = ''
+  let streamError = false
   try {
     if (!res.body) throw new Error('Response has no body to stream.')
     const reader = res.body.getReader()
@@ -124,7 +143,7 @@ export async function streamChat(req: ChatRequest): Promise<void> {
         const data = line.slice(5).trim()
         if (data === '[DONE]') continue
         try {
-          handleEvent(JSON.parse(data))
+          handler.handle(JSON.parse(data))
         } catch {
           // ignore keep-alive / non-JSON lines
         }
@@ -135,6 +154,7 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     if (!req.signal.aborted) {
       tx.error = (err as Error).message
       callbacks.onError(tx.error)
+      streamError = true
     }
   } finally {
     tx.responseBody = raw
@@ -142,43 +162,15 @@ export async function streamChat(req: ChatRequest): Promise<void> {
     callbacks.onTransaction(tx)
     callbacks.onDone()
   }
-}
 
-// ---------------------------------------------------------------------------
-// Fetch with CORS proxy fallback
-// ---------------------------------------------------------------------------
-
-async function fetchWithCorsFallback(
-  built: BuiltRequest,
-  corsProxy: string,
-  signal: AbortSignal,
-  tx: HttpTransaction,
-): Promise<Response> {
-  const init: RequestInit = {
-    method: 'POST',
-    headers: built.headers,
-    body: JSON.stringify(built.body),
-    signal,
+  if (req.signal.aborted) return { finish: 'aborted' }
+  if (streamError) return { finish: 'error' }
+  const { toolCalls } = handler.finalize()
+  if (toolCalls.length) {
+    callbacks.onToolCalls?.(toolCalls)
+    return { finish: 'tool_calls', toolCalls }
   }
-
-  try {
-    return await fetch(built.url, init)
-  } catch (err) {
-    // Re-throw user aborts immediately.
-    if (signal.aborted) throw err
-    const isNetwork = err instanceof TypeError
-    if (isNetwork && corsProxy) {
-      console.warn(
-        '[apiClient] direct request failed (likely CORS); retrying via proxy',
-        err,
-      )
-      const proxied = `${corsProxy}${built.url}`
-      tx.effectiveUrl = proxied
-      tx.usedProxy = true
-      return await fetch(proxied, init)
-    }
-    throw err
-  }
+  return { finish: 'stop' }
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +190,10 @@ function buildRequest(req: ChatRequest): BuiltRequest {
 
 function trimSlash(url: string): string {
   return url.replace(/\/+$/, '')
+}
+
+function nativeToolsEnabled(req: ChatRequest): boolean {
+  return !!req.tools?.length && !req.promptToolMode
 }
 
 function parsedLogitBias(raw: string): Record<string, number> | undefined {
@@ -244,7 +240,11 @@ function buildOpenAI(req: ChatRequest): BuiltRequest {
     messages.push({ role: 'system', content: p.systemPrompt })
   }
   for (const m of req.messages) {
-    messages.push(openAIMessage(m))
+    if (m.role === 'assistant' && m.toolRounds?.length) {
+      for (const wire of openAIToolMessages(m)) messages.push(wire)
+    } else {
+      messages.push(openAIMessage(m))
+    }
   }
 
   const en = p.enabled
@@ -274,6 +274,17 @@ function buildOpenAI(req: ChatRequest): BuiltRequest {
   if (en.logitBias) {
     const lb = parsedLogitBias(p.logitBias)
     if (lb) body.logit_bias = lb
+  }
+  if (nativeToolsEnabled(req)) {
+    body.tools = req.tools!.map((t) => ({
+      type: 'function',
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    }))
+    body.tool_choice = 'auto'
   }
 
   return {
@@ -321,16 +332,57 @@ function openAIMessage(m: Message) {
   return { role: m.role, content: parts }
 }
 
+/** Expand an assistant message's tool rounds into OpenAI wire messages. */
+function openAIToolMessages(m: Message): unknown[] {
+  const out: unknown[] = []
+  for (const round of m.toolRounds ?? []) {
+    if (round.native) {
+      out.push({
+        role: 'assistant',
+        content: round.content || null,
+        tool_calls: round.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: 'function',
+          function: {
+            name: tc.name,
+            arguments: tc.argsRaw ?? JSON.stringify(tc.args),
+          },
+        })),
+      })
+      for (const tc of round.toolCalls) {
+        out.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: tc.result ?? toolErrorText(tc),
+        })
+      }
+    } else {
+      out.push({ role: 'assistant', content: reactActionText(round) })
+      out.push({ role: 'user', content: reactObservationText(round) })
+    }
+  }
+  // Final answer turn. Omitted while the turn is still in progress (empty
+  // content) so the tool results stay last and the model continues.
+  if (m.content) out.push({ role: 'assistant', content: m.content })
+  return out
+}
+
 // --- Claude (Anthropic) -----------------------------------------------------
 
 function buildClaude(req: ChatRequest): BuiltRequest {
   const { config, parameters: p } = req
   const url = `${trimSlash(config.baseUrl)}/messages`
 
-  const messages = req.messages.map((m) => ({
-    role: m.role === 'assistant' ? 'assistant' : 'user',
-    content: claudeContent(m),
-  }))
+  const messages = req.messages.flatMap((m) =>
+    m.role === 'assistant' && m.toolRounds?.length
+      ? claudeToolMessages(m)
+      : [
+          {
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: claudeContent(m),
+          },
+        ],
+  )
 
   const en = p.enabled
   const thinking = en.claudeThinking
@@ -357,6 +409,14 @@ function buildClaude(req: ChatRequest): BuiltRequest {
     if (en.temperature) body.temperature = p.temperature
     if (en.topP) body.top_p = p.topP
     if (en.topK && p.topK != null) body.top_k = p.topK
+  }
+
+  if (nativeToolsEnabled(req)) {
+    body.tools = req.tools!.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    }))
   }
 
   return {
@@ -407,6 +467,39 @@ function claudeContent(m: Message) {
   return blocks
 }
 
+/** Expand an assistant message's tool rounds into Claude wire messages. */
+function claudeToolMessages(m: Message): unknown[] {
+  const out: unknown[] = []
+  for (const round of m.toolRounds ?? []) {
+    if (round.native) {
+      const assistantBlocks: unknown[] = []
+      if (round.content) assistantBlocks.push({ type: 'text', text: round.content })
+      for (const tc of round.toolCalls)
+        assistantBlocks.push({
+          type: 'tool_use',
+          id: tc.id,
+          name: tc.name,
+          input: tc.args,
+        })
+      out.push({ role: 'assistant', content: assistantBlocks })
+      out.push({
+        role: 'user',
+        content: round.toolCalls.map((tc) => ({
+          type: 'tool_result',
+          tool_use_id: tc.id,
+          content: tc.result ?? toolErrorText(tc),
+          ...(tc.status === 'error' ? { is_error: true } : {}),
+        })),
+      })
+    } else {
+      out.push({ role: 'assistant', content: reactActionText(round) })
+      out.push({ role: 'user', content: reactObservationText(round) })
+    }
+  }
+  if (m.content) out.push({ role: 'assistant', content: claudeContent(m) })
+  return out
+}
+
 // --- Gemini -----------------------------------------------------------------
 
 function buildGemini(req: ChatRequest): BuiltRequest {
@@ -414,10 +507,16 @@ function buildGemini(req: ChatRequest): BuiltRequest {
   const method = p.stream ? 'streamGenerateContent?alt=sse' : 'generateContent'
   const url = `${trimSlash(config.baseUrl)}/models/${config.modelId}:${method}`
 
-  const contents = req.messages.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: geminiParts(m),
-  }))
+  const contents = req.messages.flatMap((m) =>
+    m.role === 'assistant' && m.toolRounds?.length
+      ? geminiToolContents(m)
+      : [
+          {
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: geminiParts(m),
+          },
+        ],
+  )
 
   const en = p.enabled
   const generationConfig: Record<string, unknown> = {}
@@ -441,6 +540,17 @@ function buildGemini(req: ChatRequest): BuiltRequest {
   const body: Record<string, unknown> = { contents, generationConfig }
   if (p.systemPrompt.trim()) {
     body.systemInstruction = { parts: [{ text: p.systemPrompt }] }
+  }
+  if (nativeToolsEnabled(req)) {
+    body.tools = [
+      {
+        functionDeclarations: req.tools!.map((t) => ({
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        })),
+      },
+    ]
   }
 
   return {
@@ -473,37 +583,120 @@ function geminiParts(m: Message) {
   return parts
 }
 
+/** Expand an assistant message's tool rounds into Gemini wire contents. */
+function geminiToolContents(m: Message): unknown[] {
+  const out: unknown[] = []
+  for (const round of m.toolRounds ?? []) {
+    if (round.native) {
+      const modelParts: unknown[] = []
+      if (round.content) modelParts.push({ text: round.content })
+      for (const tc of round.toolCalls)
+        modelParts.push({
+          functionCall: { name: tc.name, args: tc.args },
+          // Gemini requires its thoughtSignature echoed back on replay.
+          ...(tc.signature ? { thoughtSignature: tc.signature } : {}),
+        })
+      out.push({ role: 'model', parts: modelParts })
+      out.push({
+        role: 'user',
+        parts: round.toolCalls.map((tc) => ({
+          functionResponse: {
+            name: tc.name,
+            response: { result: tc.result ?? toolErrorText(tc) },
+          },
+        })),
+      })
+    } else {
+      out.push({ role: 'model', parts: [{ text: reactActionText(round) }] })
+      out.push({ role: 'user', parts: [{ text: reactObservationText(round) }] })
+    }
+  }
+  if (m.content) out.push({ role: 'model', parts: geminiParts(m) })
+  return out
+}
+
 /** A document attachment carrying extracted text (vs. a native PDF/base64). */
 function isTextDoc(a: Attachment): boolean {
   return a.kind === 'document' && typeof a.text === 'string'
+}
+
+// --- tool-round replay helpers ----------------------------------------------
+
+function toolErrorText(tc: ToolCall): string {
+  return tc.error ? `Error: ${tc.error}` : '(no result)'
+}
+
+/** Reconstruct the assistant's ReAct action turn (prose + fenced JSON action). */
+function reactActionText(round: ToolRound): string {
+  const actions = round.toolCalls
+    .map(
+      (tc) =>
+        '```json\n' +
+        JSON.stringify({ tool: tc.name, args: tc.args }) +
+        '\n```',
+    )
+    .join('\n')
+  return [round.content?.trim(), actions].filter(Boolean).join('\n\n')
+}
+
+function reactObservationText(round: ToolRound): string {
+  return round.toolCalls
+    .map((tc) => `OBSERVATION (${tc.name}): ${tc.result ?? toolErrorText(tc)}`)
+    .join('\n\n')
 }
 
 // ---------------------------------------------------------------------------
 // Provider response shapes (loosely typed; field values validated at use site)
 // ---------------------------------------------------------------------------
 
+interface OpenAIToolCallDelta {
+  index?: number
+  id?: string
+  function?: { name?: string; arguments?: unknown }
+}
 interface OpenAIDelta {
   role?: string
   content?: unknown
   reasoning_content?: unknown
   reasoning?: unknown
+  tool_calls?: OpenAIToolCallDelta[]
 }
 interface OpenAIResponse {
-  choices?: Array<{ delta?: OpenAIDelta; message?: OpenAIDelta }>
+  choices?: Array<{
+    delta?: OpenAIDelta
+    message?: OpenAIDelta
+    finish_reason?: string
+  }>
 }
 
 interface ClaudeStreamEvent {
   type?: string
-  delta?: { type?: string; text?: string; thinking?: string }
+  index?: number
+  content_block?: { type?: string; id?: string; name?: string }
+  delta?: {
+    type?: string
+    text?: string
+    thinking?: string
+    partial_json?: string
+  }
   error?: { message?: string }
 }
 interface ClaudeResponse {
-  content?: Array<{ type?: string; text?: string; thinking?: string }>
+  content?: Array<{
+    type?: string
+    text?: string
+    thinking?: string
+    id?: string
+    name?: string
+    input?: unknown
+  }>
 }
 
 interface GeminiPart {
   text?: unknown
   thought?: unknown
+  thoughtSignature?: string
+  functionCall?: { name?: string; args?: Record<string, unknown> }
 }
 interface GeminiResponse {
   candidates?: Array<{ content?: { parts?: GeminiPart[] } }>
@@ -513,11 +706,16 @@ interface GeminiResponse {
 // Streaming SSE event handlers per provider
 // ---------------------------------------------------------------------------
 
+interface EventHandler {
+  handle: (json: unknown) => void
+  finalize: () => { toolCalls: ParsedToolCall[] }
+}
+
 function pickEventHandler(
   type: ApiConfig['type'],
   cb: StreamCallbacks,
   splitter: ReturnType<typeof createThinkSplitter>,
-) {
+): EventHandler {
   if (type === 'claude') return makeClaudeHandler(cb)
   if (type === 'gemini') return makeGeminiHandler(cb)
   return makeOpenAIHandler(cb, splitter)
@@ -526,41 +724,113 @@ function pickEventHandler(
 function makeOpenAIHandler(
   cb: StreamCallbacks,
   splitter: ReturnType<typeof createThinkSplitter>,
-) {
-  return (json: OpenAIResponse) => {
-    const choice = json?.choices?.[0]
-    if (!choice) return
-    const delta: OpenAIDelta = choice.delta ?? choice.message ?? {}
-    const reasoning = delta.reasoning_content ?? delta.reasoning
-    if (typeof reasoning === 'string' && reasoning) cb.onReasoning(reasoning)
-    if (typeof delta.content === 'string' && delta.content) {
-      splitter.push(delta.content)
-    }
+): EventHandler {
+  const acc = new Map<number, { id: string; name: string; args: string }>()
+  return {
+    handle: (raw: unknown) => {
+      const json = raw as OpenAIResponse
+      const choice = json?.choices?.[0]
+      if (!choice) return
+      const delta: OpenAIDelta = choice.delta ?? choice.message ?? {}
+      const reasoning = delta.reasoning_content ?? delta.reasoning
+      if (typeof reasoning === 'string' && reasoning) cb.onReasoning(reasoning)
+      if (typeof delta.content === 'string' && delta.content) {
+        splitter.push(delta.content)
+      }
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          const idx = typeof tc.index === 'number' ? tc.index : 0
+          const cur = acc.get(idx) ?? { id: '', name: '', args: '' }
+          if (tc.id) cur.id = tc.id
+          if (tc.function?.name) cur.name = tc.function.name
+          if (typeof tc.function?.arguments === 'string')
+            cur.args += tc.function.arguments
+          acc.set(idx, cur)
+        }
+      }
+    },
+    finalize: () => ({
+      toolCalls: [...acc.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([, v]) => ({
+          id: v.id || uid('tc_'),
+          name: v.name,
+          argsRaw: v.args || '{}',
+        }))
+        .filter((c) => c.name),
+    }),
   }
 }
 
-function makeClaudeHandler(cb: StreamCallbacks) {
-  return (json: ClaudeStreamEvent) => {
-    if (json?.type === 'content_block_delta') {
-      const d = json.delta
-      if (d?.type === 'text_delta' && d.text) cb.onContent(d.text)
-      else if (d?.type === 'thinking_delta' && d.thinking)
-        cb.onReasoning(d.thinking)
-    } else if (json?.type === 'error') {
-      cb.onError(json.error?.message ?? 'Anthropic stream error')
-    }
+function makeClaudeHandler(cb: StreamCallbacks): EventHandler {
+  const blocks = new Map<
+    number,
+    { id: string; name: string; args: string; isTool: boolean }
+  >()
+  return {
+    handle: (raw: unknown) => {
+      const json = raw as ClaudeStreamEvent
+      if (json?.type === 'content_block_start') {
+        const blk = json.content_block
+        if (blk?.type === 'tool_use') {
+          blocks.set(json.index ?? 0, {
+            id: blk.id ?? '',
+            name: blk.name ?? '',
+            args: '',
+            isTool: true,
+          })
+        }
+      } else if (json?.type === 'content_block_delta') {
+        const d = json.delta
+        if (d?.type === 'text_delta' && d.text) cb.onContent(d.text)
+        else if (d?.type === 'thinking_delta' && d.thinking)
+          cb.onReasoning(d.thinking)
+        else if (
+          d?.type === 'input_json_delta' &&
+          typeof d.partial_json === 'string'
+        ) {
+          const blk = blocks.get(json.index ?? 0)
+          if (blk) blk.args += d.partial_json
+        }
+      } else if (json?.type === 'error') {
+        cb.onError(json.error?.message ?? 'Anthropic stream error')
+      }
+    },
+    finalize: () => ({
+      toolCalls: [...blocks.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .filter(([, v]) => v.isTool && v.name)
+        .map(([, v]) => ({
+          id: v.id || uid('tc_'),
+          name: v.name,
+          argsRaw: v.args || '{}',
+        })),
+    }),
   }
 }
 
-function makeGeminiHandler(cb: StreamCallbacks) {
-  return (json: GeminiResponse) => {
-    const parts = json?.candidates?.[0]?.content?.parts
-    if (!Array.isArray(parts)) return
-    for (const part of parts) {
-      if (typeof part?.text !== 'string') continue
-      if (part.thought) cb.onReasoning(part.text)
-      else cb.onContent(part.text)
-    }
+function makeGeminiHandler(cb: StreamCallbacks): EventHandler {
+  const calls: ParsedToolCall[] = []
+  return {
+    handle: (raw: unknown) => {
+      const json = raw as GeminiResponse
+      const parts = json?.candidates?.[0]?.content?.parts
+      if (!Array.isArray(parts)) return
+      for (const part of parts) {
+        if (part?.functionCall?.name) {
+          calls.push({
+            id: uid('tc_'),
+            name: part.functionCall.name,
+            argsRaw: JSON.stringify(part.functionCall.args ?? {}),
+            signature: part.thoughtSignature,
+          })
+        } else if (typeof part?.text === 'string') {
+          if (part.thought) cb.onReasoning(part.text)
+          else cb.onContent(part.text)
+        }
+      }
+    },
+    finalize: () => ({ toolCalls: calls }),
   }
 }
 
@@ -572,27 +842,43 @@ function parseFinal(
   type: ApiConfig['type'],
   json: ClaudeResponse & GeminiResponse & OpenAIResponse,
   cb: StreamCallbacks,
-) {
+): ParsedToolCall[] | null {
   if (type === 'claude') {
     const blocks = json?.content
+    const calls: ParsedToolCall[] = []
     if (Array.isArray(blocks)) {
       for (const b of blocks) {
         if (b?.type === 'text' && b.text) cb.onContent(b.text)
         else if (b?.type === 'thinking' && b.thinking) cb.onReasoning(b.thinking)
+        else if (b?.type === 'tool_use' && b.name)
+          calls.push({
+            id: b.id || uid('tc_'),
+            name: b.name,
+            argsRaw: JSON.stringify(b.input ?? {}),
+          })
       }
     }
-    return
+    return calls.length ? calls : null
   }
   if (type === 'gemini') {
     const parts = json?.candidates?.[0]?.content?.parts
+    const calls: ParsedToolCall[] = []
     if (Array.isArray(parts)) {
       for (const part of parts) {
-        if (typeof part?.text !== 'string') continue
-        if (part.thought) cb.onReasoning(part.text)
-        else cb.onContent(part.text)
+        if (part?.functionCall?.name) {
+          calls.push({
+            id: uid('tc_'),
+            name: part.functionCall.name,
+            argsRaw: JSON.stringify(part.functionCall.args ?? {}),
+            signature: part.thoughtSignature,
+          })
+        } else if (typeof part?.text === 'string') {
+          if (part.thought) cb.onReasoning(part.text)
+          else cb.onContent(part.text)
+        }
       }
     }
-    return
+    return calls.length ? calls : null
   }
   // OpenAI-compatible — route content through the <think> splitter.
   const msg: OpenAIDelta = json?.choices?.[0]?.message ?? {}
@@ -603,35 +889,20 @@ function parseFinal(
     splitter.push(msg.content)
     splitter.end()
   }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function headersToObject(headers: Headers): Record<string, string> {
-  const out: Record<string, string> = {}
-  headers.forEach((value, key) => {
-    out[key] = value
-  })
-  return out
-}
-
-async function safeReadText(res: Response): Promise<string> {
-  try {
-    return await res.text()
-  } catch {
-    return ''
+  const calls: ParsedToolCall[] = []
+  if (Array.isArray(msg.tool_calls)) {
+    for (const tc of msg.tool_calls) {
+      if (tc.function?.name) {
+        calls.push({
+          id: tc.id || uid('tc_'),
+          name: tc.function.name,
+          argsRaw:
+            typeof tc.function.arguments === 'string'
+              ? tc.function.arguments
+              : JSON.stringify(tc.function.arguments ?? {}),
+        })
+      }
+    }
   }
-}
-
-function formatHttpError(status: number, statusText: string, body: string) {
-  let detail = body
-  try {
-    const json = JSON.parse(body)
-    detail = json?.error?.message ?? json?.message ?? body
-  } catch {
-    // keep raw
-  }
-  return `HTTP ${status} ${statusText}${detail ? ` — ${detail}` : ''}`
+  return calls.length ? calls : null
 }

@@ -157,6 +157,7 @@ export function ChatWindow() {
                 onViewRaw={
                   m.transaction ? () => openInspector(m.transaction!) : undefined
                 }
+                onInspectTx={openInspector}
                 onDelete={
                   !isGenerating && session
                     ? () => deleteMessage(session.id, m.id)

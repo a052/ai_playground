@@ -7,13 +7,17 @@ import type {
   Message,
   ModelParameters,
   PromptTemplate,
+  SearchConfig,
+  SearchSettings,
   Settings,
   ThemeMode,
 } from '@/types'
 import {
   DEFAULT_PARAMETERS,
+  DEFAULT_SEARCH_SETTINGS,
   DEFAULT_SETTINGS,
   normalizeParameters,
+  normalizeSearchSettings,
 } from '@/lib/defaults'
 import {
   clearLocalConfig,
@@ -24,6 +28,8 @@ import {
   promptTemplatesStorage,
   reasoningTemplatesStorage,
   saveSessions,
+  searchConfigsStorage,
+  searchSettingsStorage,
   settingsStorage,
 } from '@/lib/storage'
 import { buildBackup, parseBackup } from '@/lib/backup'
@@ -49,6 +55,8 @@ interface AppState {
   settings: Settings
   promptTemplates: PromptTemplate[]
   reasoningTemplates: PromptTemplate[]
+  searchConfigs: SearchConfig[]
+  searchSettings: SearchSettings
   sessions: ChatSession[]
   activeSessionId: string | null
 
@@ -66,6 +74,14 @@ interface AppState {
   duplicateConfig: (id: string) => void
   removeConfig: (id: string) => void
   setActiveConfig: (id: string | null) => void
+
+  // search configs & settings
+  addSearchConfig: (config: SearchConfig) => void
+  updateSearchConfig: (id: string, patch: Partial<SearchConfig>) => void
+  removeSearchConfig: (id: string) => void
+  setActiveSearchConfig: (id: string | null) => void
+  setSearchSettings: (patch: Partial<SearchSettings>) => void
+  toggleWebSearch: () => void
 
   // parameters
   setParameter: <K extends keyof ModelParameters>(
@@ -139,6 +155,12 @@ function persistPromptTemplates(templates: PromptTemplate[]) {
 function persistReasoningTemplates(templates: PromptTemplate[]) {
   reasoningTemplatesStorage.save(templates)
 }
+function persistSearchConfigs(configs: SearchConfig[]) {
+  searchConfigsStorage.save(configs)
+}
+function persistSearchSettings(settings: SearchSettings) {
+  searchSettingsStorage.save(settings)
+}
 
 /** Immutably patch a session in the sessions array and bump `updatedAt`. */
 function patchSession(
@@ -155,6 +177,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   promptTemplates: [],
   reasoningTemplates: [],
+  searchConfigs: [],
+  searchSettings: { ...DEFAULT_SEARCH_SETTINGS },
   sessions: [],
   activeSessionId: null,
 
@@ -170,6 +194,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const settings = settingsStorage.load({ ...DEFAULT_SETTINGS })
     const promptTemplates = promptTemplatesStorage.load([])
     const reasoningTemplates = reasoningTemplatesStorage.load([])
+    const searchConfigs = searchConfigsStorage.load([])
+    const searchSettings = normalizeSearchSettings(
+      searchSettingsStorage.load({ ...DEFAULT_SEARCH_SETTINGS }),
+    )
     const sessions = await loadSessions()
     sessions.sort((a, b) => b.updatedAt - a.updatedAt)
 
@@ -183,12 +211,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       settings.activeConfigId = configs[0].id
     }
 
+    // Validate the active search config still exists.
+    if (
+      searchSettings.activeConfigId &&
+      !searchConfigs.some((c) => c.id === searchSettings.activeConfigId)
+    ) {
+      searchSettings.activeConfigId = searchConfigs[0]?.id ?? null
+    } else if (!searchSettings.activeConfigId && searchConfigs.length > 0) {
+      searchSettings.activeConfigId = searchConfigs[0].id
+    }
+
     set({
       configs,
       parameters,
       settings,
       promptTemplates,
       reasoningTemplates,
+      searchConfigs,
+      searchSettings,
       sessions,
       activeSessionId: sessions[0]?.id ?? null,
       hydrated: true,
@@ -232,6 +272,51 @@ export const useAppStore = create<AppState>((set, get) => ({
     const settings = { ...get().settings, activeConfigId: id }
     persistSettings(settings)
     set({ settings })
+  },
+
+  // --- search configs & settings -------------------------------------------
+  addSearchConfig: (config) => {
+    const searchConfigs = [...get().searchConfigs, config]
+    const searchSettings = { ...get().searchSettings }
+    if (!searchSettings.activeConfigId) searchSettings.activeConfigId = config.id
+    persistSearchConfigs(searchConfigs)
+    persistSearchSettings(searchSettings)
+    set({ searchConfigs, searchSettings })
+  },
+  updateSearchConfig: (id, patch) => {
+    const searchConfigs = get().searchConfigs.map((c) =>
+      c.id === id ? { ...c, ...patch } : c,
+    )
+    persistSearchConfigs(searchConfigs)
+    set({ searchConfigs })
+  },
+  removeSearchConfig: (id) => {
+    const searchConfigs = get().searchConfigs.filter((c) => c.id !== id)
+    const searchSettings = { ...get().searchSettings }
+    if (searchSettings.activeConfigId === id) {
+      searchSettings.activeConfigId = searchConfigs[0]?.id ?? null
+    }
+    persistSearchConfigs(searchConfigs)
+    persistSearchSettings(searchSettings)
+    set({ searchConfigs, searchSettings })
+  },
+  setActiveSearchConfig: (id) => {
+    const searchSettings = { ...get().searchSettings, activeConfigId: id }
+    persistSearchSettings(searchSettings)
+    set({ searchSettings })
+  },
+  setSearchSettings: (patch) => {
+    const searchSettings = { ...get().searchSettings, ...patch }
+    persistSearchSettings(searchSettings)
+    set({ searchSettings })
+  },
+  toggleWebSearch: () => {
+    const searchSettings = {
+      ...get().searchSettings,
+      enabled: !get().searchSettings.enabled,
+    }
+    persistSearchSettings(searchSettings)
+    set({ searchSettings })
   },
 
   // --- parameters ----------------------------------------------------------
@@ -459,6 +544,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       settings,
       promptTemplates,
       reasoningTemplates,
+      searchConfigs,
+      searchSettings,
       sessions,
     } = get()
     const backup = buildBackup(
@@ -468,6 +555,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         settings,
         promptTemplates,
         reasoningTemplates,
+        searchConfigs,
+        searchSettings,
         sessions,
       },
       scope,
@@ -520,6 +609,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       persistReasoningTemplates(backup.reasoningTemplates)
       patch.reasoningTemplates = backup.reasoningTemplates
     }
+    if (backup.searchConfigs) {
+      const searchConfigs = backup.searchConfigs
+      persistSearchConfigs(searchConfigs)
+      patch.searchConfigs = searchConfigs
+
+      const searchSettings = { ...(backup.searchSettings ?? get().searchSettings) }
+      if (
+        searchSettings.activeConfigId &&
+        !searchConfigs.some((c) => c.id === searchSettings.activeConfigId)
+      ) {
+        searchSettings.activeConfigId = searchConfigs[0]?.id ?? null
+      } else if (!searchSettings.activeConfigId && searchConfigs.length > 0) {
+        searchSettings.activeConfigId = searchConfigs[0].id
+      }
+      persistSearchSettings(searchSettings)
+      patch.searchSettings = searchSettings
+    } else if (backup.searchSettings) {
+      persistSearchSettings(backup.searchSettings)
+      patch.searchSettings = backup.searchSettings
+    }
 
     // Chats slice replaces sessions only.
     if (backup.sessions) {
@@ -542,6 +651,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       settings: { ...DEFAULT_SETTINGS },
       promptTemplates: [],
       reasoningTemplates: [],
+      searchConfigs: [],
+      searchSettings: { ...DEFAULT_SEARCH_SETTINGS },
       sessions: [],
       activeSessionId: null,
     })

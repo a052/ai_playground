@@ -6,6 +6,7 @@ import { ChatWindow } from '@/components/ChatWindow'
 import { ParameterPanel } from '@/components/ParameterPanel'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { ApiEditorDialog } from '@/components/ApiEditorDialog'
+import { SearchApiEditorDialog } from '@/components/SearchApiEditorDialog'
 import { ExportDialog } from '@/components/ExportDialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Toaster } from '@/components/ui/toaster'
@@ -89,6 +90,7 @@ function App() {
 
       <SettingsDialog />
       <ApiEditorDialog />
+      <SearchApiEditorDialog />
       <ExportDialog />
       <ConfirmDialog />
       <Toaster />

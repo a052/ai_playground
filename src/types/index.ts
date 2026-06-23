@@ -35,7 +35,8 @@ export interface Attachment {
 
 /** Captured HTTP transaction for the inspector / cURL generator. */
 export interface HttpTransaction {
-  apiType: ApiType
+  /** Provider type, or a tool-execution kind for search/fetch calls. */
+  apiType: ApiType | 'search' | 'fetch'
   requestMethod: string
   requestUrl: string
   /** The URL actually used (may include CORS proxy prefix). */
@@ -71,6 +72,128 @@ export interface Message {
   isStreaming?: boolean
   /** Error string if the request failed. */
   error?: string
+  /** Agentic tool-calling rounds preceding the final answer (assistant only). */
+  toolRounds?: ToolRound[]
+}
+
+// ---------------------------------------------------------------------------
+// Tool calling & web search
+// ---------------------------------------------------------------------------
+
+/** Built-in tools the model can call when web search is enabled. */
+export type ToolName = 'web_search' | 'fetch_url'
+export type ToolCallStatus = 'pending' | 'running' | 'done' | 'error'
+
+/** A single web-search hit. */
+export interface SearchResult {
+  title: string
+  url: string
+  snippet: string
+  /** Full page text, present when search depth = fetch top-N. */
+  content?: string
+  publishedAt?: string
+}
+
+/** The result of reading one URL. */
+export interface FetchedPage {
+  url: string
+  title?: string
+  text: string
+  /** Which path produced the text: 'jina' | 'direct' | 'proxy'. */
+  via: string
+}
+
+/** One model→tool request and its executed result, within an agentic round. */
+export interface ToolCall {
+  /** Provider-native id (OpenAI tool_calls[].id / Claude tool_use.id); Gemini
+   *  has none so we synthesize one and do not send it back. */
+  id: string
+  name: ToolName | string
+  args: Record<string, unknown>
+  /** Raw streamed arguments JSON (fragments concatenated) for the inspector. */
+  argsRaw?: string
+  /** Gemini's `thoughtSignature` for this call — must be echoed back on replay. */
+  signature?: string
+  status: ToolCallStatus
+  /** Stringified result fed back to the model. */
+  result?: string
+  /** Structured result for rich rendering. */
+  resultData?: SearchResult[] | FetchedPage
+  error?: string
+  /** HTTP transaction of EXECUTING this tool (search API / Jina / proxy). */
+  transaction?: HttpTransaction
+}
+
+/** One agentic round: the model call that requested tools, plus its calls. */
+export interface ToolRound {
+  /** Assistant text emitted alongside the tool calls in this round. */
+  content?: string
+  reasoning?: string
+  toolCalls: ToolCall[]
+  /** HTTP transaction of the MODEL call that produced this round. */
+  transaction?: HttpTransaction
+  /** True for native function calling; false for the ReAct prompt fallback
+   *  (changes how the builders serialize this round on replay). */
+  native: boolean
+}
+
+/** A finalized tool call parsed from a provider response. */
+export interface ParsedToolCall {
+  id: string
+  name: string
+  argsRaw: string
+  /** Gemini's `thoughtSignature`, captured from the functionCall part. */
+  signature?: string
+}
+
+/** Provider-neutral tool definition; builders translate to native shapes. */
+export interface ToolDef {
+  name: string
+  description: string
+  /** JSON-schema parameters. */
+  parameters: Record<string, unknown>
+}
+
+export type StreamFinish = 'stop' | 'tool_calls' | 'error' | 'aborted'
+
+/** Outcome of one model round, returned by `streamChat`. */
+export interface StreamResult {
+  finish: StreamFinish
+  toolCalls?: ParsedToolCall[]
+  /** HTTP status when finish = 'error' (used to detect native-tools rejection). */
+  errorStatus?: number
+}
+
+/** Supported web-search providers (plus a generic 'custom'). */
+export type SearchProvider = 'tavily' | 'brave' | 'serper' | 'exa' | 'custom'
+
+/** A user-configured web-search API. */
+export interface SearchConfig {
+  id: string
+  name: string
+  provider: SearchProvider
+  apiKey: string
+  /** Optional endpoint override (required for 'custom'). */
+  baseUrl?: string
+  /** Raw JSON merged into the request (e.g. country, freshness, custom params). */
+  extraParams?: string
+}
+
+export type SearchDepth = 'snippets' | 'fetch_top_n'
+
+/** Web-search behavior settings (persisted). */
+export interface SearchSettings {
+  /** The composer "+" menu Web Search toggle. */
+  enabled: boolean
+  activeConfigId: string | null
+  /** snippets only, or auto-fetch the top-N result pages. */
+  depth: SearchDepth
+  topN: number
+  maxResults: number
+  /** Agentic loop guard. */
+  maxIterations: number
+  /** Max characters of fetched page text fed back to the model. */
+  maxPageChars: number
 }
 
 export interface ChatSession {
@@ -177,6 +300,8 @@ export interface BackupFile {
   settings?: Settings
   promptTemplates?: PromptTemplate[]
   reasoningTemplates?: PromptTemplate[]
+  searchConfigs?: SearchConfig[]
+  searchSettings?: SearchSettings
   sessions?: ChatSession[]
 }
 
@@ -186,5 +311,7 @@ export interface StreamCallbacks {
   onReasoning: (deltaText: string) => void
   onTransaction: (tx: HttpTransaction) => void
   onError: (message: string) => void
+  /** Emitted once when the model finishes a round requesting tool calls. */
+  onToolCalls?: (calls: ParsedToolCall[]) => void
   onDone: () => void
 }

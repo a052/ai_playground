@@ -11,14 +11,15 @@ function shellQuote(value: string): string {
  * keeps the Authorization / API-key headers so it works out of the box.
  */
 export function generateCurl(tx: HttpTransaction): string {
+  const method = tx.requestMethod || 'POST'
   const lines: string[] = []
-  lines.push(`curl -X ${tx.requestMethod} ${shellQuote(tx.requestUrl)}`)
+  lines.push(`curl -X ${method} ${shellQuote(tx.requestUrl)}`)
 
   for (const [key, value] of Object.entries(tx.requestHeaders)) {
     lines.push(`  -H ${shellQuote(`${key}: ${value}`)}`)
   }
 
-  if (tx.requestBody) {
+  if (tx.requestBody && method !== 'GET' && method !== 'HEAD') {
     // Body is already a pretty-printed JSON string; compact it for the command.
     let body = tx.requestBody
     try {
