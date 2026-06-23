@@ -120,9 +120,9 @@ export const ChatMessage = memo(function ChatMessage({
                 : 'rounded-bl-md border-border bg-card',
             )}
           >
-            {!isUser && message.reasoning !== undefined && (
+            {!isUser && !!message.reasoning && (
               <ReasoningBlock
-                reasoning={message.reasoning ?? ''}
+                reasoning={message.reasoning}
                 streaming={message.isStreaming && !message.content}
               />
             )}
