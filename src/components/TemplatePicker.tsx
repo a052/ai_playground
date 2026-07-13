@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Tip } from '@/components/ui/tip'
 import { toast } from '@/store/useToast'
 import { confirm } from '@/store/useConfirm'
 import { useT } from '@/i18n'
@@ -116,16 +117,17 @@ export function TemplatePicker({
           <Plus className="h-3.5 w-3.5" />
         </IconBtn>
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              disabled={disabled}
-              title={t('templates.select')}
-              className="flex items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
+          <Tip label={t('templates.select')}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={disabled}
+                className="flex items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+          </Tip>
           <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
             {templates.length === 0 ? (
               <div className="px-2 py-2 text-xs text-muted-foreground/70">

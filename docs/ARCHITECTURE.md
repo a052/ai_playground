@@ -138,7 +138,7 @@ When web search is enabled, the model can call two tools — `web_search(query)`
 - **Executors**: `src/lib/searchClient.ts` has per-provider adapters (Tavily/Brave/Serper/Exa/Custom) + `runWebSearch`; `src/lib/urlFetcher.ts` has `runFetchUrl` (Jina Reader → direct/proxy + `htmlToText`, truncated). Both go through `runHttp`, so search/fetch calls appear in the inspector. Shared exec types live in `src/lib/toolContext.ts`.
 - **Caveat**: Claude thinking is disabled during the tool loop (replaying signed thinking blocks isn't supported yet).
 
-UI: the composer `+` menu (`MessageComposer.tsx`) toggles `searchSettings.enabled`; `ToolCallCard.tsx` renders live "searching/reading" cards above the bubble in `ChatMessage.tsx` (each with an inspect button); `SearchApiEditorDialog.tsx` + a "Web search" group in `SettingsDialog.tsx` manage providers. Search configs/settings persist via `searchConfigsStorage`/`searchSettingsStorage` and round-trip through the `configs`-scope backup.
+UI: `MessageComposer.tsx` toggles `searchSettings.enabled` via a Globe toolbar button (next to attach; lit when on) and the same action in the `+` menu; `ToolCallCard.tsx` renders live "searching/reading" cards above the bubble in `ChatMessage.tsx` (each with an inspect button); `SearchApiEditorDialog.tsx` + a "Web search" group in `SettingsDialog.tsx` manage providers. Search configs/settings persist via `searchConfigsStorage`/`searchSettingsStorage` and round-trip through the `configs`-scope backup.
 
 ---
 
@@ -260,7 +260,7 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `App.tsx` | 3-pane shell (Sidebar / ChatWindow / ParameterPanel), runs `hydrate()`, applies theme + `lang`. |
 | `Sidebar.tsx` | Session list, API config list, theme/language toggles, settings + import/export entry points. |
 | `ChatWindow.tsx` | Active API selector, message stream, empty state. |
-| `MessageComposer.tsx` | Textarea, attach button, send/stop, attachment chips, drag-drop, clipboard paste (Ctrl+V / right-click → Paste). |
+| `MessageComposer.tsx` | Tall textarea above toolbar; `+` menu, attach, web-search Globe toggle, send/stop; attachment chips, drag-drop, clipboard paste. |
 | `ParameterPanel.tsx` | Accordion of all model parameters with per-param enable toggles. |
 | `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/inspect/delete). |
 | `ReasoningBlock.tsx` | Collapsible thinking display; auto-collapses when the answer starts. |
@@ -273,6 +273,8 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `ConfirmDialog.tsx` | Designed destructive-confirm dialog driven by `useConfirm`; replaces `window.confirm`. |
 | `HttpInspectorModal.tsx` | View captured HTTP and copy as `curl`. |
 | `ui/` | Vendored shadcn-style Radix primitives (button, dialog, select, slider, switch, tabs, tooltip, accordion, …). Treat as a design-system layer. |
+
+All hover hints on buttons use the shared modern tooltip — wrap the trigger element in `ui/tip.tsx` (`<Tip label={…}>`), a thin wrapper over the Radix `Tooltip` primitives whose `TooltipProvider` is mounted once at the app root in `App.tsx`. Do not use the native HTML `title=` attribute for hover tooltips (it renders the browser's unstyled default); `title=` is reserved for section headings and non-hover uses.
 
 ---
 

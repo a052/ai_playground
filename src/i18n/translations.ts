@@ -258,7 +258,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Web search (composer + tool cards)
     'chat.tools': 'Tools',
     'chat.webSearch': 'Web Search',
-    'chat.webSearchOn': 'Web search on',
     'chat.webSearchNoProvider': 'Add a search provider in Settings first.',
     'chat.searching': 'Searching the web',
     'chat.reading': 'Reading page',
@@ -534,7 +533,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Web search (composer + tool cards)
     'chat.tools': '工具',
     'chat.webSearch': '联网搜索',
-    'chat.webSearchOn': '联网搜索已开启',
     'chat.webSearchNoProvider': '请先在设置中添加搜索服务商。',
     'chat.searching': '正在搜索网络',
     'chat.reading': '正在读取网页',

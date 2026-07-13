@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -217,46 +218,47 @@ export function MessageComposer({
           </div>
         )}
 
-        {/* active web-search pill */}
-        {webSearchEnabled && (
-          <div className="flex items-center gap-1.5 px-2.5 pt-2">
-            <span className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
-              <Globe className="h-3 w-3" />
-              {t('chat.webSearchOn')}
-              <button
-                type="button"
-                onClick={toggleWebSearch}
-                className="ml-0.5 rounded-full hover:bg-brand/20"
-                aria-label={t('chat.webSearch')}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          </div>
-        )}
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept="image/*,audio/*,video/*,application/pdf,text/*,.pdf,.txt,.md,.markdown,.csv,.tsv,.json,.jsonc,.yaml,.yml,.toml,.ini,.xml,.html,.css,.scss,.less,.js,.mjs,.cjs,.jsx,.ts,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.h,.cpp,.cc,.hpp,.cs,.php,.sh,.bash,.sql,.vue,.svelte,.log"
+          className="hidden"
+          onChange={onFileInput}
+        />
 
-        <div className="flex items-end gap-2 p-2">
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept="image/*,audio/*,video/*,application/pdf,text/*,.pdf,.txt,.md,.markdown,.csv,.tsv,.json,.jsonc,.yaml,.yml,.toml,.ini,.xml,.html,.css,.scss,.less,.js,.mjs,.cjs,.jsx,.ts,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.h,.cpp,.cc,.hpp,.cs,.php,.sh,.bash,.sql,.vue,.svelte,.log"
-            className="hidden"
-            onChange={onFileInput}
-          />
+        {/* text area above the toolbar */}
+        <textarea
+          ref={textareaRef}
+          value={text}
+          disabled={disabled}
+          onChange={(e) => {
+            setText(e.target.value)
+            resize()
+          }}
+          onKeyDown={onKeyDown}
+          onPaste={onPaste}
+          rows={2}
+          placeholder={t('chat.placeholder')}
+          className="max-h-[200px] min-h-[52px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-relaxed outline-none scrollbar-thin placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        />
+
+        {/* bottom toolbar: first button left-aligned under text; send on the right */}
+        <div className="flex items-center gap-0.5 px-1.5 pb-2">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-muted-foreground"
-                disabled={disabled}
-                title={t('chat.tools')}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tip label={t('chat.tools')}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground"
+                  disabled={disabled}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tip>
             <DropdownMenuContent align="start" side="top">
               <DropdownMenuItem onClick={onWebSearchClick}>
                 <Globe className="h-4 w-4" />
@@ -265,56 +267,64 @@ export function MessageComposer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-muted-foreground"
-            disabled={disabled}
-            onClick={() => fileRef.current?.click()}
-            title={t('chat.attach')}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
+          <Tip label={t('chat.attach')}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-muted-foreground"
+              disabled={disabled}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          </Tip>
+          <Tip label={t('chat.webSearch')}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'shrink-0',
+                webSearchEnabled
+                  ? 'bg-brand/10 text-brand hover:bg-brand/15 hover:text-brand'
+                  : 'text-muted-foreground',
+              )}
+              disabled={disabled}
+              onClick={onWebSearchClick}
+              aria-pressed={webSearchEnabled}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
+          </Tip>
 
-          <textarea
-            ref={textareaRef}
-            value={text}
-            disabled={disabled}
-            onChange={(e) => {
-              setText(e.target.value)
-              resize()
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            rows={1}
-            placeholder={t('chat.placeholder')}
-            className="max-h-[200px] flex-1 resize-none self-center bg-transparent py-2 text-sm leading-relaxed outline-none scrollbar-thin placeholder:text-muted-foreground disabled:cursor-not-allowed"
-          />
+          <div className="flex-1" />
 
           {isGenerating ? (
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="shrink-0"
-              onClick={onStop}
-              title={t('chat.stop')}
-            >
-              <Square className="h-3.5 w-3.5 fill-current" />
-            </Button>
+            <Tip label={t('chat.stop')}>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="shrink-0"
+                onClick={onStop}
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </Button>
+            </Tip>
           ) : (
-            <Button
-              type="button"
-              variant="brand"
-              size="icon"
-              className="shrink-0"
-              disabled={disabled || (!text.trim() && attachments.length === 0)}
-              onClick={submit}
-              title={t('chat.send')}
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
+            <Tip label={t('chat.send')}>
+              <Button
+                type="button"
+                variant="brand"
+                size="icon"
+                className="shrink-0"
+                disabled={disabled || (!text.trim() && attachments.length === 0)}
+                onClick={submit}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </Tip>
           )}
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Tip } from '@/components/ui/tip'
 import { useT } from '@/i18n'
 import type { Attachment, HttpTransaction, Message } from '@/types'
 import { cn, formatBytes, formatTime } from '@/lib/utils'
@@ -298,18 +299,19 @@ function AttachmentPreview({ attachment }: { attachment: Attachment }) {
   if (attachment.kind === 'image') {
     return (
       <>
-        <button
-          type="button"
-          onClick={() => setZoom(true)}
-          title={t('image.viewOriginal')}
-          className="block overflow-hidden rounded-lg border border-border"
-        >
-          <img
-            src={attachment.dataUrl}
-            alt={attachment.name}
-            className="max-h-48 cursor-zoom-in object-cover transition hover:opacity-90"
-          />
-        </button>
+        <Tip label={t('image.viewOriginal')}>
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            className="block overflow-hidden rounded-lg border border-border"
+          >
+            <img
+              src={attachment.dataUrl}
+              alt={attachment.name}
+              className="max-h-48 cursor-zoom-in object-cover transition hover:opacity-90"
+            />
+          </button>
+        </Tip>
         <ImageLightbox
           src={zoom ? attachment.dataUrl : null}
           alt={attachment.name}

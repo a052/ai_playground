@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -68,24 +69,22 @@ export function ParameterPanel() {
     <div className="flex h-full flex-col">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setParamPanel(false)}
-            title={t('param.collapse')}
-          >
-            <PanelRightClose className="h-4 w-4" />
-          </Button>
+          <Tip label={t('param.collapse')}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setParamPanel(false)}
+            >
+              <PanelRightClose className="h-4 w-4" />
+            </Button>
+          </Tip>
           <h2 className="text-sm font-semibold">{t('param.title')}</h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={reset}
-          title={t('param.reset')}
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
+        <Tip label={t('param.reset')}>
+          <Button variant="ghost" size="icon-sm" onClick={reset}>
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </Tip>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-3">

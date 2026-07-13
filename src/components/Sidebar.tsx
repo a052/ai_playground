@@ -14,6 +14,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tip'
 import { Input } from '@/components/ui/input'
 import {
   ContextMenu,
@@ -114,14 +115,11 @@ export function Sidebar() {
           </div>
           <span className="text-sm font-semibold">{t('app.title')}</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={toggleSidebar}
-          title={t('sidebar.collapse')}
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </Button>
+        <Tip label={t('sidebar.collapse')}>
+          <Button variant="ghost" size="icon-sm" onClick={toggleSidebar}>
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
+        </Tip>
       </div>
 
       <div className="px-3 pb-2">

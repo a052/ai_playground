@@ -11,6 +11,7 @@ import { ChatMessage } from '@/components/ChatMessage'
 import { MessageComposer } from '@/components/MessageComposer'
 import { HttpInspectorModal } from '@/components/HttpInspectorModal'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tip'
 import {
   Select,
   SelectContent,
@@ -75,14 +76,11 @@ export function ChatWindow() {
       {/* header */}
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         {!sidebarOpen && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={toggleSidebar}
-            title={t('sidebar.expand')}
-          >
-            <PanelLeftOpen className="h-4 w-4" />
-          </Button>
+          <Tip label={t('sidebar.expand')}>
+            <Button variant="ghost" size="icon-sm" onClick={toggleSidebar}>
+              <PanelLeftOpen className="h-4 w-4" />
+            </Button>
+          </Tip>
         )}
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -119,23 +117,17 @@ export function ChatWindow() {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => createSession()}
-          title={t('sidebar.newChat')}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-        {!paramPanelOpen && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={toggleParamPanel}
-            title={t('param.title')}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
+        <Tip label={t('sidebar.newChat')}>
+          <Button variant="ghost" size="icon-sm" onClick={() => createSession()}>
+            <Plus className="h-4 w-4" />
           </Button>
+        </Tip>
+        {!paramPanelOpen && (
+          <Tip label={t('param.title')}>
+            <Button variant="ghost" size="icon-sm" onClick={toggleParamPanel}>
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </Tip>
         )}
       </header>
 

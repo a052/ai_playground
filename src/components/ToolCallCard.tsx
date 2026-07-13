@@ -9,6 +9,7 @@ import {
   Terminal,
 } from 'lucide-react'
 import { useT } from '@/i18n'
+import { Tip } from '@/components/ui/tip'
 import type { FetchedPage, SearchResult, ToolCall } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -59,14 +60,15 @@ export function ToolCallCard({ toolCall, onInspect }: ToolCallCardProps) {
         <StatusIcon status={toolCall.status} />
 
         {toolCall.transaction && onInspect && (
-          <button
-            type="button"
-            onClick={() => onInspect(toolCall.transaction)}
-            title={t('chat.viewOriginal')}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Terminal className="h-3.5 w-3.5" />
-          </button>
+          <Tip label={t('chat.viewOriginal')}>
+            <button
+              type="button"
+              onClick={() => onInspect(toolCall.transaction)}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Terminal className="h-3.5 w-3.5" />
+            </button>
+          </Tip>
         )}
         {hasDetail && (
           <button

@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tip'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -159,29 +160,31 @@ export function SettingsDialog() {
                       </span>
                       <span className="truncate">{c.name}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openSearchEditor(c.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      title={t('search.edit')}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        confirm({
-                          title: t('search.delete'),
-                          description: t('search.deleteDesc'),
-                          confirmLabel: t('search.delete'),
-                          onConfirm: () => removeSearchConfig(c.id),
-                        })
-                      }
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                      title={t('search.delete')}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <Tip label={t('search.edit')}>
+                      <button
+                        type="button"
+                        onClick={() => openSearchEditor(c.id)}
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </Tip>
+                    <Tip label={t('search.delete')}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          confirm({
+                            title: t('search.delete'),
+                            description: t('search.deleteDesc'),
+                            confirmLabel: t('search.delete'),
+                            onConfirm: () => removeSearchConfig(c.id),
+                          })
+                        }
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Tip>
                   </div>
                 ))
               )}
