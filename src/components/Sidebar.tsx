@@ -34,12 +34,6 @@ import { toast } from '@/store/useToast'
 import { confirm } from '@/store/useConfirm'
 import { cn } from '@/lib/utils'
 
-const TYPE_LABEL: Record<string, string> = {
-  openai: 'OpenAI',
-  claude: 'Claude',
-  gemini: 'Gemini',
-}
-
 export function Sidebar() {
   const t = useT()
   const sessions = useAppStore((s) => s.sessions)
@@ -133,11 +127,83 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* scroll region: chats + apis */}
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-2">
-        {/* Chats */}
-        <SectionLabel>{t('sidebar.chats')}</SectionLabel>
-        <div className="mb-3 space-y-0.5">
+      {/* two equal scroll halves: apis (top) / chats (bottom) */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* API models half */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center justify-between pr-1">
+            <SectionLabel>{t('sidebar.models')}</SectionLabel>
+            <IconBtn label={t('sidebar.addModel')} onClick={() => openApiEditor()}>
+              <Plus className="h-3.5 w-3.5" />
+            </IconBtn>
+          </div>
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto scrollbar-thin px-2 pb-2">
+          {configs.length === 0 ? (
+            <EmptyHint>{t('sidebar.noModels')}</EmptyHint>
+          ) : (
+            configs.map((c) => {
+              const active = c.id === activeConfigId
+              return (
+                <ContextMenu key={c.id}>
+                  <ContextMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                        active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveConfig(c.id)}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <span
+                          className={cn(
+                            'h-1.5 w-1.5 shrink-0 rounded-full',
+                            active ? 'bg-brand' : 'bg-muted-foreground/30',
+                          )}
+                        />
+                        <span className="min-w-0 truncate">{c.name}</span>
+                      </button>
+                      <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                        <IconBtn
+                          label={t('api.edit')}
+                          onClick={() => openApiEditor(c.id)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </IconBtn>
+                        <IconBtn
+                          label={t('sidebar.delete')}
+                          onClick={() =>
+                            confirm({
+                              title: t('sidebar.deleteModelConfirm'),
+                              description: t('confirm.deleteModelDesc'),
+                              onConfirm: () => removeConfig(c.id),
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </IconBtn>
+                      </div>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onSelect={() => duplicateConfig(c.id)}>
+                      <Copy className="h-3.5 w-3.5" />
+                      {t('api.duplicate')}
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              )
+            })
+          )}
+          </div>
+        </div>
+
+        {/* Chats half */}
+        <div className="flex min-h-0 flex-1 flex-col border-t border-border">
+          <SectionLabel>{t('sidebar.chats')}</SectionLabel>
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto scrollbar-thin px-2 pb-2">
           {sessions.length === 0 ? (
             <EmptyHint>{t('sidebar.noChats')}</EmptyHint>
           ) : (
@@ -200,78 +266,7 @@ export function Sidebar() {
               )
             })
           )}
-        </div>
-
-        {/* APIs */}
-        <div className="flex items-center justify-between pr-1">
-          <SectionLabel>{t('sidebar.models')}</SectionLabel>
-          <IconBtn label={t('sidebar.addModel')} onClick={() => openApiEditor()}>
-            <Plus className="h-3.5 w-3.5" />
-          </IconBtn>
-        </div>
-        <div className="space-y-0.5">
-          {configs.length === 0 ? (
-            <EmptyHint>{t('sidebar.noModels')}</EmptyHint>
-          ) : (
-            configs.map((c) => {
-              const active = c.id === activeConfigId
-              return (
-                <ContextMenu key={c.id}>
-                  <ContextMenuTrigger asChild>
-                    <div
-                      className={cn(
-                        'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                        active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setActiveConfig(c.id)}
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                      >
-                        <span
-                          className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full',
-                            active ? 'bg-brand' : 'bg-muted-foreground/30',
-                          )}
-                        />
-                        <span className="min-w-0 truncate">{c.name}</span>
-                        <span className="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">
-                          {TYPE_LABEL[c.type]}
-                        </span>
-                      </button>
-                      <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
-                        <IconBtn
-                          label={t('api.edit')}
-                          onClick={() => openApiEditor(c.id)}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </IconBtn>
-                        <IconBtn
-                          label={t('sidebar.delete')}
-                          onClick={() =>
-                            confirm({
-                              title: t('sidebar.deleteModelConfirm'),
-                              description: t('confirm.deleteModelDesc'),
-                              onConfirm: () => removeConfig(c.id),
-                            })
-                          }
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </IconBtn>
-                      </div>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem onSelect={() => duplicateConfig(c.id)}>
-                      <Copy className="h-3.5 w-3.5" />
-                      {t('api.duplicate')}
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              )
-            })
-          )}
+          </div>
         </div>
       </div>
 

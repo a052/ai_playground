@@ -34,7 +34,7 @@ export const translations: Record<Language, Record<string, string>> = {
       "This API configuration will be permanently removed. This action can't be undone.",
 
     // Chat window
-    'chat.placeholder': 'Send a message…',
+    'chat.placeholder': 'Send a message… Ctrl+Enter to send · Enter for newline',
     'chat.send': 'Send',
     'chat.stop': 'Stop',
     'chat.regenerate': 'Regenerate',
@@ -62,7 +62,6 @@ export const translations: Record<Language, Record<string, string>> = {
     'chat.selectModel': 'Select API',
     'chat.tokens': 'tokens',
     'chat.errorPrefix': 'Request failed',
-    'chat.enterToSend': 'Shift+Enter to send · Enter for newline',
     'chat.unsupportedType': '{name}: unsupported file type.',
 
     // Image lightbox
@@ -321,7 +320,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'confirm.deleteModelDesc': '此 API 配置将被永久删除，操作无法撤销。',
 
     // Chat window
-    'chat.placeholder': '发送消息…',
+    'chat.placeholder': '发送消息… Ctrl+Enter 发送 · Enter 换行',
     'chat.send': '发送',
     'chat.stop': '停止',
     'chat.regenerate': '重新生成',
@@ -348,7 +347,6 @@ export const translations: Record<Language, Record<string, string>> = {
     'chat.selectModel': '选择 API',
     'chat.tokens': '令牌',
     'chat.errorPrefix': '请求失败',
-    'chat.enterToSend': 'Shift+Enter 发送 · Enter 换行',
     'chat.unsupportedType': '{name}：不支持的文件类型。',
 
     // Image lightbox

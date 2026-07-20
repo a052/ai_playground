@@ -171,7 +171,7 @@ export function MessageComposer({
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && e.ctrlKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       submit()
     }
@@ -187,7 +187,7 @@ export function MessageComposer({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={cn(
-          'relative mx-auto w-full max-w-3xl rounded-2xl border bg-card shadow-sm transition-colors',
+          'relative mx-auto w-full max-w-[960px] rounded-2xl border bg-card shadow-sm transition-colors',
           dragging ? 'border-brand ring-2 ring-brand/30' : 'border-border',
           disabled && 'opacity-60',
         )}
@@ -328,9 +328,6 @@ export function MessageComposer({
           )}
         </div>
       </div>
-      <p className="mx-auto mt-1.5 max-w-3xl px-1 text-center text-[11px] text-muted-foreground">
-        {t('chat.enterToSend')}
-      </p>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import {
   Dialog,
@@ -18,10 +19,18 @@ export function ConfirmDialog() {
   const pending = useConfirm((s) => s.pending)
   const cancel = useConfirm((s) => s.cancel)
   const accept = useConfirm((s) => s.accept)
+  const confirmRef = useRef<HTMLButtonElement>(null)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && cancel()}>
-      <DialogContent hideClose className="max-w-sm">
+      <DialogContent
+        hideClose
+        className="max-w-sm"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          confirmRef.current?.focus()
+        }}
+      >
         <DialogHeader className="items-center text-center">
           <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle className="h-6 w-6" />
@@ -36,6 +45,7 @@ export function ConfirmDialog() {
             {options?.cancelLabel ?? t('common.cancel')}
           </Button>
           <Button
+            ref={confirmRef}
             variant="destructive"
             onClick={() => void accept()}
             disabled={pending}

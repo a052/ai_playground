@@ -62,35 +62,30 @@ export const ChatMessage = memo(function ChatMessage({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className={cn(
-        'group flex w-full gap-3',
-        isUser ? 'flex-row-reverse' : 'flex-row',
-      )}
+      className="group flex w-full flex-col gap-1"
     >
-      {/* avatar */}
-      <div
-        className={cn(
-          'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
-          isUser
-            ? 'border-border bg-secondary'
-            : 'border-brand/30 bg-brand/10 text-brand',
-        )}
-      >
-        {isUser ? (
-          <User className="h-3.5 w-3.5" />
-        ) : (
-          <Sparkles className="h-3.5 w-3.5" />
-        )}
-      </div>
-
-      <div
-        className={cn(
-          'flex min-w-0 max-w-[85%] flex-col gap-1',
-          isUser ? 'items-end' : 'items-start',
-        )}
-      >
+      <div className="flex w-full min-w-0 flex-col gap-1">
         {/* meta */}
-        <div className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground">
+        <div
+          className={cn(
+            'flex items-center gap-2 px-1 text-[11px] text-muted-foreground',
+            isUser ? 'flex-row-reverse' : 'flex-row',
+          )}
+        >
+          <span
+            className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
+              isUser
+                ? 'border-border bg-secondary'
+                : 'border-brand/30 bg-brand/10 text-brand',
+            )}
+          >
+            {isUser ? (
+              <User className="h-3.5 w-3.5" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+          </span>
           <span className="font-medium text-foreground/80">
             {isUser ? t('chat.you') : message.model || t('chat.assistant')}
           </span>
@@ -168,7 +163,7 @@ export const ChatMessage = memo(function ChatMessage({
           message.error) && (
           <div
             className={cn(
-              'rounded-2xl border px-4 py-2.5',
+              'w-full rounded-2xl border px-4 py-2.5',
               isUser
                 ? 'rounded-br-md border-brand/20 bg-brand/10'
                 : 'rounded-bl-md border-border bg-card',

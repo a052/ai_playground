@@ -136,7 +136,7 @@ export function ChatWindow() {
         {messages.length === 0 ? (
           <EmptyState hasConfig={hasConfig} onAddApi={() => openApiEditor()} />
         ) : (
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
+          <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6">
             {messages.map((m) => (
               <ChatMessage
                 key={m.id}
@@ -163,7 +163,7 @@ export function ChatWindow() {
       </div>
 
       {/* composer */}
-      <div className="shrink-0 border-t border-border bg-background/60 backdrop-blur">
+      <div className="shrink-0 bg-background/60 backdrop-blur">
         <MessageComposer
           onSend={send}
           onStop={stop}
