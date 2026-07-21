@@ -58,6 +58,8 @@ export interface HttpTransaction {
 
 export interface Message {
   id: string
+  /** Parent node in the conversation tree; null/absent for the root message. */
+  parentId?: string | null
   role: MessageRole
   content: string
   /** Captured reasoning / thinking trace, if any. */
@@ -199,7 +201,12 @@ export interface SearchSettings {
 export interface ChatSession {
   id: string
   title: string
+  /** Full node pool for the conversation tree (all branches). Order is not
+   *  authoritative — `parentId` links define structure. */
   messages: Message[]
+  /** Id of the tip message of the currently-selected branch. When absent, the
+   *  last array element is treated as the leaf (covers legacy/migrated data). */
+  currentLeafId?: string | null
   createdAt: number
   updatedAt: number
   /** Config id of the model last used to generate in this chat. */

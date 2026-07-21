@@ -79,7 +79,19 @@ MessageComposer.send()                       (src/components/MessageComposer.tsx
       → scheduleSessionSave()                  → debounced IndexedDB write (600ms)
 ```
 
-`regenerate(assistantMessageId)` truncates history *before* the target assistant message, deletes it, and re-runs `runCompletion()` with the same config. `stop()` calls `store.stopGeneration()`, which aborts the in-flight `AbortController`.
+`regenerate(assistantMessageId)` **forks a new branch** instead of overwriting: it builds history from the active path up to the target reply's `parentId`, then runs `runCompletion()` with a placeholder parented at that same node — creating a *sibling* of the old reply and switching the visible branch to it. Nothing is deleted. `editUserMessage(id, text)` similarly forks: it appends a new user message as a sibling of the edited one (same `parentId`, preserved attachments) and generates a reply on the new branch. `stop()` calls `store.stopGeneration()`, which aborts the in-flight `AbortController`.
+
+### 3.1 Conversation branching (message tree)
+
+Each `ChatSession` stores **all** messages from **all** branches in its flat `messages` array. Structure is defined by `Message.parentId`; the session's `currentLeafId` marks the tip of the currently-visible branch. The linear thread shown in the UI is *derived* — never stored — by `activePath(messages, currentLeafId)`, which walks parent links from the leaf to the root.
+
+`src/lib/messageTree.ts` holds the pure helpers:
+- `activePath(messages, leafId)` — the visible root→leaf thread (falls back to the last array element when the leaf is missing/stale).
+- `childrenOf` / `siblingInfo` — sibling bookkeeping that powers the `‹index/total›` branch switcher rendered under a forked message.
+- `subtreeLeaf(messages, id, currentLeafId)` — the leaf to select when switching *to* a sibling (keeps the current leaf if it descends from the target, else descends newest-child-first).
+- `migrateLinear(session)` — upgrades a legacy pre-branching session (flat `messages`, no `parentId`/`currentLeafId`) into the tree shape by chaining messages in array order. Idempotent; applied on `hydrate()` and on backup import.
+
+`store.addMessage` sets `parentId` (explicit, else the current leaf) and advances `currentLeafId`, so normal `send()` stays linear. `store.switchBranch(sessionId, messageId)` flips `currentLeafId` via `subtreeLeaf`. `store.deleteMessage` prunes the whole subtree of the removed node. All branches of a conversation remain a **single** entry in the session list.
 
 ---
 
@@ -170,7 +182,7 @@ Holds `configs`, `parameters`, `settings`, `promptTemplates`, `reasoningTemplate
 - **Settings:** `setTheme`, `toggleTheme`, `setLanguage`, `setCorsProxy`.
 - **Templates:** `addPromptTemplate / updatePromptTemplate / removePromptTemplate` and `addReasoningTemplate / updateReasoningTemplate / removeReasoningTemplate`. Two parallel libraries of `PromptTemplate` (`{ id, title, content, createdAt, updatedAt }`) — one feeds the **System prompt** field, the other feeds the **Reasoning → Custom parameter** JSON-fragment field. Selecting a template overwrites the corresponding `parameters` field via `setParameter`.
 - **Sessions:** `createSession`, `ensureActiveSession`, `deleteSession`, `renameSession`, `setActiveSession`, `setSessionModel` (records the config id last used to generate in a chat, on `ChatSession.lastUsedConfigId`), `openSession` (sets the active session **and** restores its `lastUsedConfigId` as the active config — returns an `OpenSessionResult` of `{ status: 'none' | 'switched' | 'missing', modelName? }` so the sidebar can toast on switch or when the recorded config was deleted).
-- **Messages:** `addMessage` (auto-derives the session title from the first user message), `updateMessage`, `appendToMessage` (accumulates streaming content/reasoning deltas), `deleteMessage`.
+- **Messages:** `addMessage` (sets `parentId` to the explicit value or the current leaf, advances `currentLeafId`, and auto-derives the session title from the first user message), `updateMessage`, `appendToMessage` (accumulates streaming content/reasoning deltas), `deleteMessage` (prunes the removed node's whole subtree), `switchBranch` (flips the visible branch via `subtreeLeaf`). See §3.1.
 - **Generation control:** `setGenerating`, `setAbortController`, `stopGeneration` (aborts + clears).
 - **Backup:** `exportBackup(scope)`, `importBackup(raw)`, `clearAll`.
 - **Selectors:** `useActiveSession()`, `useActiveConfig()`.
@@ -212,9 +224,9 @@ The authoritative reference. Summary:
 
 - **`ApiType`** = `'openai' | 'gemini' | 'claude'`.
 - **`ApiConfig`** — `{ id, name, baseUrl, apiKey, modelId, type }`.
-- **`Message`** — `{ id, role, content, reasoning?, attachments?, timestamp, model?, transaction?, isStreaming?, error? }`.
+- **`Message`** — `{ id, parentId?, role, content, reasoning?, attachments?, timestamp, model?, transaction?, isStreaming?, error?, toolRounds? }`. `parentId` links the message to its parent in the conversation tree (see §3.1); root messages have `null`/absent.
 - **`Attachment`** — `{ id, kind, name, mimeType, dataUrl, size, text? }`. `kind` ∈ image/audio/video/document. Media + native PDF use `dataUrl`; text/code docs use `text` (and an empty `dataUrl`).
-- **`ChatSession`** — `{ id, title, messages, createdAt, updatedAt, lastUsedConfigId? }`. `lastUsedConfigId` is the config id last used to generate in the chat; opening the chat restores it as the active model (see `openSession`).
+- **`ChatSession`** — `{ id, title, messages, currentLeafId?, createdAt, updatedAt, lastUsedConfigId? }`. `messages` is the flat node pool for all branches; `currentLeafId` is the tip of the visible branch (see §3.1). `lastUsedConfigId` is the config id last used to generate in the chat; opening the chat restores it as the active model (see `openSession`).
 - **`HttpTransaction`** — captured request/response (see §4.6).
 - **`Settings`** — `{ theme, language, corsProxy, activeConfigId }`.
 - **`PromptTemplate`** — `{ id, title, content, createdAt, updatedAt }`. Shared shape for both the system-prompt library and the custom-reasoning-parameter library; stored separately in `promptTemplates` and `reasoningTemplates`.
@@ -264,7 +276,7 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `ChatWindow.tsx` | Active API selector, message stream, empty state. Auto-scrolls to the newest output while streaming, but a `stickToBottom` flag (driven by the scroll container's `onScroll`) suspends this once the user scrolls up and resumes when they return near the bottom; a floating jump-to-bottom button appears while detached. |
 | `MessageComposer.tsx` | Tall textarea above toolbar; `+` menu, attach, web-search Globe toggle, send/stop; attachment chips, drag-drop, clipboard paste. |
 | `ParameterPanel.tsx` | Accordion of all model parameters with per-param enable toggles. |
-| `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/inspect/delete). The header shows the short time (`formatTime`), with a hover tooltip revealing the full date + time (`formatDateTime`, e.g. `Jul 13, 2026, 4:15 PM`). |
+| `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/edit/inspect/delete), and — for a forked message with siblings — a `‹index/total›` branch switcher (see §3.1). User messages support inline editing (pencil → textarea → save forks a new branch). The header shows the short time (`formatTime`), with a hover tooltip revealing the full date + time (`formatDateTime`, e.g. `Jul 13, 2026, 4:15 PM`). |
 | `ReasoningBlock.tsx` | Collapsible thinking display; auto-collapses when the answer starts. |
 | `MarkdownRenderer.tsx` | Markdown → HTML with GFM, math (KaTeX), syntax highlighting. |
 | `CodeBlock.tsx` | Code fence with copy button. |

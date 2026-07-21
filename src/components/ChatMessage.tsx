@@ -3,18 +3,23 @@ import { motion } from 'framer-motion'
 import {
   AlertTriangle,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   FileText,
+  Pencil,
   RefreshCw,
   Sparkles,
   Terminal,
   Trash2,
   User,
+  X,
 } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { ReasoningBlock } from '@/components/ReasoningBlock'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { ToolCallCard } from '@/components/ToolCallCard'
+import { Button } from '@/components/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -23,11 +28,16 @@ import {
 import { Tip } from '@/components/ui/tip'
 import { useT } from '@/i18n'
 import type { Attachment, HttpTransaction, Message } from '@/types'
+import type { SiblingInfo } from '@/lib/messageTree'
 import { cn, formatBytes, formatDateTime, formatTime } from '@/lib/utils'
 
 interface ChatMessageProps {
   message: Message
+  /** Sibling/branch info; present only when this message has >1 sibling. */
+  branch?: SiblingInfo
+  onSwitchBranch?: (targetId: string) => void
   onRegenerate?: () => void
+  onEdit?: (text: string) => void
   onViewRaw?: () => void
   onInspectTx?: (tx: HttpTransaction) => void
   onDelete?: () => void
@@ -35,7 +45,10 @@ interface ChatMessageProps {
 
 export const ChatMessage = memo(function ChatMessage({
   message,
+  branch,
+  onSwitchBranch,
   onRegenerate,
+  onEdit,
   onViewRaw,
   onInspectTx,
   onDelete,
@@ -43,6 +56,8 @@ export const ChatMessage = memo(function ChatMessage({
   const t = useT()
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(message.content)
 
   const copy = async () => {
     try {
@@ -52,6 +67,24 @@ export const ChatMessage = memo(function ChatMessage({
     } catch {
       /* ignore */
     }
+  }
+
+  const startEdit = () => {
+    setDraft(message.content)
+    setEditing(true)
+  }
+  const cancelEdit = () => setEditing(false)
+  const saveEdit = () => {
+    const text = draft.trim()
+    setEditing(false)
+    if (text && text !== message.content) onEdit?.(text)
+  }
+
+  const switchTo = (delta: number) => {
+    if (!branch || !onSwitchBranch) return
+    const next = branch.index + delta
+    if (next < 0 || next >= branch.total) return
+    onSwitchBranch(branch.siblingIds[next])
   }
 
   const showEmptyStreaming =
@@ -158,19 +191,45 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
         )}
 
-        {/* bubble */}
-        {(message.content ||
-          message.reasoning ||
-          showEmptyStreaming ||
-          message.error) && (
-          <div
-            className={cn(
-              'w-fit max-w-full rounded-2xl border px-4 py-2.5',
-              isUser
-                ? 'self-end rounded-br-md border-brand/20 bg-brand/10'
-                : 'self-start rounded-bl-md border-border bg-card',
-            )}
-          >
+        {/* inline editor (user messages) */}
+        {editing ? (
+          <div className="flex w-full max-w-full flex-col gap-2 self-end rounded-2xl rounded-br-md border border-brand/20 bg-brand/10 p-3">
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancelEdit()
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit()
+              }}
+              rows={Math.min(12, Math.max(2, draft.split('\n').length))}
+              className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                <X className="mr-1 h-3.5 w-3.5" />
+                {t('chat.cancel')}
+              </Button>
+              <Button variant="brand" size="sm" onClick={saveEdit}>
+                <Check className="mr-1 h-3.5 w-3.5" />
+                {t('chat.save')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* bubble */
+          (message.content ||
+            message.reasoning ||
+            showEmptyStreaming ||
+            message.error) && (
+            <div
+              className={cn(
+                'w-fit max-w-full rounded-2xl border px-4 py-2.5',
+                isUser
+                  ? 'self-end rounded-br-md border-brand/20 bg-brand/10'
+                  : 'self-start rounded-bl-md border-border bg-card',
+              )}
+            >
             {!isUser && !!message.reasoning && (
               <ReasoningBlock
                 reasoning={message.reasoning}
@@ -219,11 +278,46 @@ export const ChatMessage = memo(function ChatMessage({
                 </span>
               </div>
             )}
+            </div>
+          )
+        )}
+
+        {/* branch switcher */}
+        {branch && branch.total > 1 && !editing && (
+          <div
+            className={cn(
+              'flex flex-row items-center gap-1 px-1 text-[11px] text-muted-foreground',
+              isUser ? 'self-end' : 'self-start',
+            )}
+          >
+            <Tip label={t('chat.branchPrev')}>
+              <button
+                type="button"
+                disabled={branch.index === 0}
+                onClick={() => switchTo(-1)}
+                className="rounded p-0.5 transition-colors hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+            </Tip>
+            <span className="tabular-nums">
+              {branch.index + 1}/{branch.total}
+            </span>
+            <Tip label={t('chat.branchNext')}>
+              <button
+                type="button"
+                disabled={branch.index === branch.total - 1}
+                onClick={() => switchTo(1)}
+                className="rounded p-0.5 transition-colors hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </Tip>
           </div>
         )}
 
         {/* actions */}
-        {!message.isStreaming && (
+        {!message.isStreaming && !editing && (
           <div
             className={cn(
               'flex items-center gap-0.5 px-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100',
@@ -240,6 +334,11 @@ export const ChatMessage = memo(function ChatMessage({
                 ) : (
                   <Copy className="h-3.5 w-3.5" />
                 )}
+              </ActionButton>
+            )}
+            {isUser && onEdit && (
+              <ActionButton label={t('chat.edit')} onClick={startEdit}>
+                <Pencil className="h-3.5 w-3.5" />
               </ActionButton>
             )}
             {!isUser && onRegenerate && (

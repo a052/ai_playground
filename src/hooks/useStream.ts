@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { streamChat } from '@/lib/apiClient'
 import { runAgenticCompletion } from '@/lib/agent'
+import { activePath } from '@/lib/messageTree'
 import { uid } from '@/lib/utils'
 import type { ApiConfig, Attachment, Message } from '@/types'
 
@@ -18,6 +19,7 @@ export function useStream() {
       const assistantId = uid('msg_')
       store.addMessage(sessionId, {
         id: assistantId,
+        parentId: history.at(-1)?.id ?? null,
         role: 'assistant',
         content: '',
         reasoning: '',
@@ -108,7 +110,9 @@ export function useStream() {
       const fresh = useAppStore
         .getState()
         .sessions.find((s) => s.id === sessionId)
-      const history = fresh ? fresh.messages.slice() : [userMsg]
+      const history = fresh
+        ? activePath(fresh.messages, fresh.currentLeafId)
+        : [userMsg]
       await runCompletion(sessionId, config, history)
       return true
     },
@@ -126,11 +130,53 @@ export function useStream() {
         (s) => s.id === store.activeSessionId,
       )
       if (!session) return
-      const idx = session.messages.findIndex((m) => m.id === assistantMessageId)
-      if (idx === -1) return
+      const target = session.messages.find((m) => m.id === assistantMessageId)
+      if (!target) return
 
-      const history = session.messages.slice(0, idx)
-      store.deleteMessage(session.id, assistantMessageId)
+      // History = path up to and including the message this reply forks from.
+      const parentId = target.parentId ?? null
+      const history = parentId
+        ? activePath(session.messages, parentId)
+        : []
+      // runCompletion appends a new assistant node parented at `parentId`,
+      // creating a sibling of the old reply and switching the visible branch.
+      await runCompletion(session.id, config, history)
+    },
+    [runCompletion],
+  )
+
+  const editUserMessage = useCallback(
+    async (userMessageId: string, text: string) => {
+      const store = useAppStore.getState()
+      const config = store.configs.find(
+        (c) => c.id === store.settings.activeConfigId,
+      )
+      if (!config || !store.activeSessionId) return
+      if (!text.trim()) return
+      const session = store.sessions.find(
+        (s) => s.id === store.activeSessionId,
+      )
+      if (!session) return
+      const original = session.messages.find((m) => m.id === userMessageId)
+      if (!original || original.role !== 'user') return
+
+      // Sibling of the original user message: same parent, new content.
+      const newUserMsg: Message = {
+        id: uid('msg_'),
+        parentId: original.parentId ?? null,
+        role: 'user',
+        content: text,
+        attachments: original.attachments,
+        timestamp: Date.now(),
+      }
+      store.addMessage(session.id, newUserMsg)
+
+      const fresh = useAppStore
+        .getState()
+        .sessions.find((s) => s.id === session.id)
+      const history = fresh
+        ? activePath(fresh.messages, fresh.currentLeafId)
+        : [newUserMsg]
       await runCompletion(session.id, config, history)
     },
     [runCompletion],
@@ -140,5 +186,5 @@ export function useStream() {
     useAppStore.getState().stopGeneration()
   }, [])
 
-  return { send, regenerate, stop, isGenerating }
+  return { send, regenerate, editUserMessage, stop, isGenerating }
 }

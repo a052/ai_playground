@@ -187,6 +187,9 @@ function sanitizeSessions(value: unknown): ChatSession[] {
       title: typeof s.title === 'string' ? s.title : 'Untitled',
       createdAt: typeof s.createdAt === 'number' ? s.createdAt : Date.now(),
       updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : Date.now(),
+      ...(typeof s.currentLeafId === 'string' || s.currentLeafId === null
+        ? { currentLeafId: s.currentLeafId }
+        : {}),
       ...(typeof s.lastUsedConfigId === 'string'
         ? { lastUsedConfigId: s.lastUsedConfigId }
         : {}),

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useStream } from '@/hooks/useStream'
+import { activePath, siblingInfo } from '@/lib/messageTree'
 import {
   useActiveConfig,
   useActiveSession,
@@ -43,6 +44,7 @@ export function ChatWindow() {
   const configs = useAppStore((s) => s.configs)
   const setActiveConfig = useAppStore((s) => s.setActiveConfig)
   const deleteMessage = useAppStore((s) => s.deleteMessage)
+  const switchBranch = useAppStore((s) => s.switchBranch)
   const createSession = useAppStore((s) => s.createSession)
 
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
@@ -51,7 +53,7 @@ export function ChatWindow() {
   const toggleParamPanel = useUiStore((s) => s.toggleParamPanel)
   const openApiEditor = useUiStore((s) => s.openApiEditor)
 
-  const { send, regenerate, stop, isGenerating } = useStream()
+  const { send, regenerate, editUserMessage, stop, isGenerating } = useStream()
 
   const [inspectTx, setInspectTx] = useState<HttpTransaction | null>(null)
   const [inspectOpen, setInspectOpen] = useState(false)
@@ -59,7 +61,8 @@ export function ChatWindow() {
   const endRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [stickToBottom, setStickToBottom] = useState(true)
-  const messages = session?.messages ?? []
+  const allMessages = session?.messages ?? []
+  const messages = activePath(allMessages, session?.currentLeafId)
   const lastContentLen = messages.at(-1)?.content.length ?? 0
   const lastReasoningLen = messages.at(-1)?.reasoning?.length ?? 0
 
@@ -162,26 +165,40 @@ export function ChatWindow() {
           <EmptyState hasConfig={hasConfig} onAddApi={() => openApiEditor()} />
         ) : (
           <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6">
-            {messages.map((m) => (
-              <ChatMessage
-                key={m.id}
-                message={m}
-                onRegenerate={
-                  m.role === 'assistant' && !isGenerating
-                    ? () => regenerate(m.id)
-                    : undefined
-                }
-                onViewRaw={
-                  m.transaction ? () => openInspector(m.transaction!) : undefined
-                }
-                onInspectTx={openInspector}
-                onDelete={
-                  !isGenerating && session
-                    ? () => deleteMessage(session.id, m.id)
-                    : undefined
-                }
-              />
-            ))}
+            {messages.map((m) => {
+              const siblings = siblingInfo(allMessages, m.id)
+              return (
+                <ChatMessage
+                  key={m.id}
+                  message={m}
+                  branch={siblings.total > 1 ? siblings : undefined}
+                  onSwitchBranch={
+                    session && !isGenerating
+                      ? (targetId) => switchBranch(session.id, targetId)
+                      : undefined
+                  }
+                  onRegenerate={
+                    m.role === 'assistant' && !isGenerating
+                      ? () => regenerate(m.id)
+                      : undefined
+                  }
+                  onEdit={
+                    m.role === 'user' && !isGenerating
+                      ? (text) => editUserMessage(m.id, text)
+                      : undefined
+                  }
+                  onViewRaw={
+                    m.transaction ? () => openInspector(m.transaction!) : undefined
+                  }
+                  onInspectTx={openInspector}
+                  onDelete={
+                    !isGenerating && session
+                      ? () => deleteMessage(session.id, m.id)
+                      : undefined
+                  }
+                />
+              )
+            })}
             <div ref={endRef} />
           </div>
         )}

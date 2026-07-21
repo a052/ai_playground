@@ -33,6 +33,7 @@ import {
   settingsStorage,
 } from '@/lib/storage'
 import { buildBackup, parseBackup } from '@/lib/backup'
+import { migrateLinear, subtreeLeaf } from '@/lib/messageTree'
 import { uid } from '@/lib/utils'
 
 // --- debounced session persistence ----------------------------------------
@@ -128,6 +129,8 @@ interface AppState {
     delta: { content?: string; reasoning?: string },
   ) => void
   deleteMessage: (sessionId: string, messageId: string) => void
+  /** Switch the visible branch to the one whose tip descends from `messageId`. */
+  switchBranch: (sessionId: string, messageId: string) => void
 
   // generation control
   setGenerating: (value: boolean) => void
@@ -198,7 +201,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const searchSettings = normalizeSearchSettings(
       searchSettingsStorage.load({ ...DEFAULT_SEARCH_SETTINGS }),
     )
-    const sessions = await loadSessions()
+    const sessions = (await loadSessions()).map(migrateLinear)
     sessions.sort((a, b) => b.updatedAt - a.updatedAt)
 
     // Validate the active config still exists.
@@ -416,6 +419,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       id: uid('chat_'),
       title: '',
       messages: [],
+      currentLeafId: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -474,15 +478,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   // --- messages ------------------------------------------------------------
   addMessage: (sessionId, message) => {
     const sessions = patchSession(get().sessions, sessionId, (s) => {
+      // Fork point: explicit parentId if provided, else the current leaf.
+      const parentId =
+        message.parentId !== undefined ? message.parentId : s.currentLeafId ?? null
+      const node: Message = { ...message, parentId }
       // Derive a title from the first user message.
       let title = s.title
-      if (!title && message.role === 'user') {
-        title = message.content.slice(0, 48) || 'New conversation'
+      if (!title && node.role === 'user') {
+        title = node.content.slice(0, 48) || 'New conversation'
       }
       return {
         ...s,
         title,
-        messages: [...s.messages, message],
+        messages: [...s.messages, node],
+        currentLeafId: node.id,
         updatedAt: Date.now(),
       }
     })
@@ -518,9 +527,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ sessions })
   },
   deleteMessage: (sessionId, messageId) => {
+    const sessions = patchSession(get().sessions, sessionId, (s) => {
+      // Prune the whole subtree rooted at messageId.
+      const doomed = new Set<string>([messageId])
+      let grew = true
+      while (grew) {
+        grew = false
+        for (const m of s.messages) {
+          if (m.parentId && doomed.has(m.parentId) && !doomed.has(m.id)) {
+            doomed.add(m.id)
+            grew = true
+          }
+        }
+      }
+      const target = s.messages.find((m) => m.id === messageId)
+      const messages = s.messages.filter((m) => !doomed.has(m.id))
+      let currentLeafId = s.currentLeafId
+      if (currentLeafId && doomed.has(currentLeafId)) {
+        currentLeafId =
+          (target?.parentId && messages.some((m) => m.id === target.parentId)
+            ? target.parentId
+            : messages[messages.length - 1]?.id) ?? null
+      }
+      return { ...s, messages, currentLeafId, updatedAt: Date.now() }
+    })
+    scheduleSessionSave(sessions)
+    set({ sessions })
+  },
+  switchBranch: (sessionId, messageId) => {
     const sessions = patchSession(get().sessions, sessionId, (s) => ({
       ...s,
-      messages: s.messages.filter((m) => m.id !== messageId),
+      currentLeafId: subtreeLeaf(s.messages, messageId, s.currentLeafId),
       updatedAt: Date.now(),
     }))
     scheduleSessionSave(sessions)
@@ -633,7 +670,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Chats slice replaces sessions only.
     if (backup.sessions) {
       const sessions = backup.sessions
-        .slice()
+        .map(migrateLinear)
         .sort((a, b) => b.updatedAt - a.updatedAt)
       void saveSessions(sessions)
       patch.sessions = sessions
