@@ -101,8 +101,13 @@ export async function streamChat(req: ChatRequest): Promise<StreamResult> {
     tx.durationMs = Math.round(performance.now() - start)
     let toolCalls: ParsedToolCall[] | null = null
     try {
-      const json = JSON.parse(text)
-      toolCalls = parseFinal(config.type, json, callbacks)
+      // Some endpoints ignore stream:false and return an SSE-framed body
+      // (`data:{...}` lines). Detect that and parse it via the streaming
+      // handlers instead of failing on JSON.parse.
+      const isSse = text.trimStart().startsWith('data:')
+      toolCalls = isSse
+        ? parseSseFinal(config.type, text, callbacks)
+        : parseFinal(config.type, JSON.parse(text), callbacks)
     } catch (err) {
       if (!req.signal.aborted) callbacks.onError((err as Error).message)
     }
@@ -905,4 +910,42 @@ function parseFinal(
     }
   }
   return calls.length ? calls : null
+}
+
+/** Collect the JSON payloads from `data:` SSE lines (skips keep-alives / [DONE]). */
+function collectSseData(text: string): string[] {
+  const out: string[] = []
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim()
+    if (!line.startsWith('data:')) continue
+    const data = line.slice(5).trim()
+    if (!data || data === '[DONE]') continue
+    out.push(data)
+  }
+  return out
+}
+
+/**
+ * Parse a non-streaming body that the server framed as SSE (`data:` lines)
+ * despite stream:false. Routes payloads through the same per-provider stream
+ * handlers used for real streaming, so both delta-shaped events and a single
+ * full-response event are handled (the OpenAI handler reads `delta ?? message`).
+ */
+function parseSseFinal(
+  type: ApiConfig['type'],
+  text: string,
+  cb: StreamCallbacks,
+): ParsedToolCall[] | null {
+  const splitter = createThinkSplitter(cb.onContent, cb.onReasoning)
+  const handler = pickEventHandler(type, cb, splitter)
+  for (const data of collectSseData(text)) {
+    try {
+      handler.handle(JSON.parse(data))
+    } catch {
+      // skip a malformed / non-JSON line rather than failing the whole body
+    }
+  }
+  splitter.end()
+  const { toolCalls } = handler.finalize()
+  return toolCalls.length ? toolCalls : null
 }

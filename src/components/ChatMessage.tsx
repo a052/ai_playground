@@ -23,7 +23,7 @@ import {
 import { Tip } from '@/components/ui/tip'
 import { useT } from '@/i18n'
 import type { Attachment, HttpTransaction, Message } from '@/types'
-import { cn, formatBytes, formatTime } from '@/lib/utils'
+import { cn, formatBytes, formatDateTime, formatTime } from '@/lib/utils'
 
 interface ChatMessageProps {
   message: Message
@@ -89,7 +89,9 @@ export const ChatMessage = memo(function ChatMessage({
           <span className="font-medium text-foreground/80">
             {isUser ? t('chat.you') : message.model || t('chat.assistant')}
           </span>
-          <span>{formatTime(message.timestamp)}</span>
+          <Tip label={formatDateTime(message.timestamp)}>
+            <span className="cursor-default">{formatTime(message.timestamp)}</span>
+          </Tip>
         </div>
 
         {/* attachments */}
@@ -163,10 +165,10 @@ export const ChatMessage = memo(function ChatMessage({
           message.error) && (
           <div
             className={cn(
-              'w-full rounded-2xl border px-4 py-2.5',
+              'w-fit max-w-full rounded-2xl border px-4 py-2.5',
               isUser
-                ? 'rounded-br-md border-brand/20 bg-brand/10'
-                : 'rounded-bl-md border-border bg-card',
+                ? 'self-end rounded-br-md border-brand/20 bg-brand/10'
+                : 'self-start rounded-bl-md border-border bg-card',
             )}
           >
             {!isUser && !!message.reasoning && (

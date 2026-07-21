@@ -109,6 +109,8 @@ Parse each provider's streaming delta format into `onContent` / `onReasoning` ca
 
 `parseFinal(type, json, cb)` does the same routing for single-shot (`stream: false`) responses, per provider.
 
+Some endpoints ignore `stream: false` and still return an **SSE-framed** body (`data:{...}` lines). The non-streaming path detects a leading `data:` and routes the body through `parseSseFinal`, which strips the `data:` framing and replays the payloads through the normal streaming handlers (`pickEventHandler`) — so these responses parse correctly instead of failing on `JSON.parse`.
+
 ### 4.4 Encoded provider quirks
 
 These are real constraints baked into the builders — keep them in mind when editing:
@@ -259,10 +261,10 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | --- | --- |
 | `App.tsx` | 3-pane shell (Sidebar / ChatWindow / ParameterPanel), runs `hydrate()`, applies theme + `lang`. |
 | `Sidebar.tsx` | Session list, API config list, theme/language toggles, settings + import/export entry points. |
-| `ChatWindow.tsx` | Active API selector, message stream, empty state. |
+| `ChatWindow.tsx` | Active API selector, message stream, empty state. Auto-scrolls to the newest output while streaming, but a `stickToBottom` flag (driven by the scroll container's `onScroll`) suspends this once the user scrolls up and resumes when they return near the bottom; a floating jump-to-bottom button appears while detached. |
 | `MessageComposer.tsx` | Tall textarea above toolbar; `+` menu, attach, web-search Globe toggle, send/stop; attachment chips, drag-drop, clipboard paste. |
 | `ParameterPanel.tsx` | Accordion of all model parameters with per-param enable toggles. |
-| `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/inspect/delete). |
+| `ChatMessage.tsx` | One message bubble: content, attachments, reasoning, error, actions (copy/regenerate/inspect/delete). The header shows the short time (`formatTime`), with a hover tooltip revealing the full date + time (`formatDateTime`, e.g. `Jul 13, 2026, 4:15 PM`). |
 | `ReasoningBlock.tsx` | Collapsible thinking display; auto-collapses when the answer starts. |
 | `MarkdownRenderer.tsx` | Markdown → HTML with GFM, math (KaTeX), syntax highlighting. |
 | `CodeBlock.tsx` | Code fence with copy button. |

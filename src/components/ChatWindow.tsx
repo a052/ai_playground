@@ -6,6 +6,7 @@ import {
   Plus,
   Sparkles,
   SlidersHorizontal,
+  ArrowDown,
 } from 'lucide-react'
 import { ChatMessage } from '@/components/ChatMessage'
 import { MessageComposer } from '@/components/MessageComposer'
@@ -56,13 +57,33 @@ export function ChatWindow() {
   const [inspectOpen, setInspectOpen] = useState(false)
 
   const endRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [stickToBottom, setStickToBottom] = useState(true)
   const messages = session?.messages ?? []
   const lastContentLen = messages.at(-1)?.content.length ?? 0
   const lastReasoningLen = messages.at(-1)?.reasoning?.length ?? 0
 
   useEffect(() => {
+    if (stickToBottom) {
+      endRef.current?.scrollIntoView({ block: 'end' })
+    }
+  }, [messages.length, lastContentLen, lastReasoningLen, stickToBottom])
+
+  useEffect(() => {
+    setStickToBottom(true)
+  }, [session?.id])
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    setStickToBottom(atBottom)
+  }
+
+  const jumpToBottom = () => {
+    setStickToBottom(true)
     endRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, lastContentLen, lastReasoningLen, session?.id])
+  }
 
   const openInspector = (tx: HttpTransaction) => {
     setInspectTx(tx)
@@ -132,7 +153,11 @@ export function ChatWindow() {
       </header>
 
       {/* messages */}
-      <div className="relative min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="relative min-h-0 flex-1 overflow-y-auto scrollbar-thin"
+      >
         {messages.length === 0 ? (
           <EmptyState hasConfig={hasConfig} onAddApi={() => openApiEditor()} />
         ) : (
@@ -158,6 +183,20 @@ export function ChatWindow() {
               />
             ))}
             <div ref={endRef} />
+          </div>
+        )}
+        {!stickToBottom && messages.length > 0 && (
+          <div className="sticky bottom-4 flex justify-center">
+            <Tip label={t('chat.jumpToBottom')}>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                onClick={jumpToBottom}
+                className="rounded-full border border-border/70 shadow-md"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </Tip>
           </div>
         )}
       </div>

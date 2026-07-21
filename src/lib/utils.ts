@@ -39,6 +39,17 @@ export function formatDate(ts: number): string {
   })
 }
 
+/** Format a unix timestamp (ms) as a full date and time, e.g. "Jul 13, 2026, 4:15 PM". */
+export function formatDateTime(ts: number): string {
+  return new Date(ts).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 /** Read a File as a base64 data URL. */
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
