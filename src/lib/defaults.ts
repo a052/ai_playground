@@ -26,6 +26,7 @@ export const DEFAULT_ENABLED: Record<ToggleableParam, boolean> = {
   claudeThinking: false,
   n: false,
   logitBias: false,
+  nativeWebSearch: false,
 }
 
 export const DEFAULT_PARAMETERS: ModelParameters = {

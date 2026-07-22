@@ -238,6 +238,7 @@ export type ToggleableParam =
   | 'claudeThinking'
   | 'n'
   | 'logitBias'
+  | 'nativeWebSearch'
 
 export interface ModelParameters {
   /** Stream the response (SSE) vs. a single non-streaming completion. */

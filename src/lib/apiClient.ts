@@ -291,6 +291,9 @@ function buildOpenAI(req: ChatRequest): BuiltRequest {
     }))
     body.tool_choice = 'auto'
   }
+  // Provider-native web search: the model searches server-side during
+  // generation and streams the answer back through the normal handlers.
+  if (en.nativeWebSearch) body.web_search_options = {}
 
   return {
     url,
@@ -416,13 +419,18 @@ function buildClaude(req: ChatRequest): BuiltRequest {
     if (en.topK && p.topK != null) body.top_k = p.topK
   }
 
-  if (nativeToolsEnabled(req)) {
-    body.tools = req.tools!.map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.parameters,
-    }))
-  }
+  const claudeTools: unknown[] = nativeToolsEnabled(req)
+    ? req.tools!.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.parameters,
+      }))
+    : []
+  // Provider-native web search tool: Claude runs the searches itself and cites
+  // sources inline in its answer.
+  if (en.nativeWebSearch)
+    claudeTools.push({ type: 'web_search_20250305', name: 'web_search' })
+  if (claudeTools.length) body.tools = claudeTools
 
   return {
     url,
@@ -546,17 +554,20 @@ function buildGemini(req: ChatRequest): BuiltRequest {
   if (p.systemPrompt.trim()) {
     body.systemInstruction = { parts: [{ text: p.systemPrompt }] }
   }
-  if (nativeToolsEnabled(req)) {
-    body.tools = [
-      {
-        functionDeclarations: req.tools!.map((t) => ({
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        })),
-      },
-    ]
-  }
+  const geminiTools: unknown[] = nativeToolsEnabled(req)
+    ? [
+        {
+          functionDeclarations: req.tools!.map((t) => ({
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters,
+          })),
+        },
+      ]
+    : []
+  // Provider-native web search via Google Search grounding.
+  if (en.nativeWebSearch) geminiTools.push({ google_search: {} })
+  if (geminiTools.length) body.tools = geminiTools
 
   return {
     url,

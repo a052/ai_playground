@@ -464,6 +464,29 @@ export function ParameterPanel() {
             </AccordionContent>
           </AccordionItem>
 
+          {/* Tools */}
+          <AccordionItem value="tools">
+            <AccordionTrigger>{t('param.section.tools')}</AccordionTrigger>
+            <AccordionContent className="space-y-5 pt-1">
+              <Field
+                label={t('param.nativeWebSearch')}
+                tip={t('param.nativeWebSearch.tip')}
+                appliesTo={['OpenAI', 'Claude', 'Gemini']}
+                dim={off('nativeWebSearch')}
+                toggle={tog('nativeWebSearch')}
+              >
+                <p
+                  className={cn(
+                    'text-[11px] text-muted-foreground',
+                    off('nativeWebSearch') && 'opacity-50',
+                  )}
+                >
+                  {t('param.nativeWebSearch.desc')}
+                </p>
+              </Field>
+            </AccordionContent>
+          </AccordionItem>
+
           {/* Advanced */}
           <AccordionItem value="advanced" className="border-b-0">
             <AccordionTrigger>{t('param.section.advanced')}</AccordionTrigger>

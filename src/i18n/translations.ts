@@ -129,6 +129,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'param.section.format': 'Formatting & control',
     'param.section.reasoning': 'Reasoning',
     'param.section.advanced': 'Advanced',
+    'param.section.tools': 'Tools',
     'param.systemPrompt': 'System prompt',
     'param.systemPrompt.tip':
       "Sets the model's persona and high-level instructions for the conversation.",
@@ -191,6 +192,11 @@ export const translations: Record<Language, Record<string, string>> = {
       'JSON map of token id → bias (−100 to 100) to steer token likelihoods.',
     'param.logitBias.placeholder': '{ "50256": -100 }',
     'param.logitBias.invalid': 'Invalid JSON',
+    'param.nativeWebSearch': 'Native web search',
+    'param.nativeWebSearch.tip':
+      'Let the model provider run web searches on its own servers during generation (OpenAI/Claude/Gemini, search-capable models only). Independent of the composer web-search tool, which searches via your own search provider.',
+    'param.nativeWebSearch.desc':
+      'The provider searches server-side and cites sources in its answer. No separate search API key needed.',
     'param.optDefault': 'Default',
     'param.optMinimal': 'Minimal',
     'param.optLow': 'Low',
@@ -419,6 +425,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'param.section.format': '格式与控制',
     'param.section.reasoning': '推理',
     'param.section.advanced': '高级',
+    'param.section.tools': '工具',
     'param.systemPrompt': '系统提示词',
     'param.systemPrompt.tip': '设定模型的角色与对话的高层指令。',
     'param.systemPrompt.placeholder': '你是一个乐于助人的助手…',
@@ -473,6 +480,11 @@ export const translations: Record<Language, Record<string, string>> = {
       '令牌 id → 偏置（−100 到 100）的 JSON 映射，用于引导令牌概率。',
     'param.logitBias.placeholder': '{ "50256": -100 }',
     'param.logitBias.invalid': 'JSON 格式无效',
+    'param.nativeWebSearch': '原生联网搜索',
+    'param.nativeWebSearch.tip':
+      '让模型供应商在生成过程中于其自有服务器上执行联网搜索（仅支持 OpenAI/Claude/Gemini 中具备搜索能力的模型）。此功能独立于输入框的联网搜索工具（后者通过你自己配置的搜索服务商检索）。',
+    'param.nativeWebSearch.desc':
+      '由供应商在服务端搜索并在回答中标注来源，无需单独的搜索 API 密钥。',
     'param.optDefault': '默认',
     'param.optMinimal': '极简',
     'param.optLow': '低',

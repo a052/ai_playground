@@ -112,6 +112,9 @@ function prepareParameters(
   promptToolMode: boolean,
 ): ModelParameters {
   const p: ModelParameters = { ...base, enabled: { ...base.enabled } }
+  // The agentic loop drives its own web_search/fetch_url tools; provider-native
+  // search must not stack on top of it, so force it off for these model calls.
+  p.enabled.nativeWebSearch = false
   // Claude thinking + native tools requires replaying signed thinking blocks
   // (which we don't capture); disable thinking during the search loop.
   if (config.type === 'claude' && !promptToolMode) {
