@@ -295,6 +295,8 @@ function buildOpenAI(req: ChatRequest): BuiltRequest {
   // generation and streams the answer back through the normal handlers.
   if (en.nativeWebSearch) body.web_search_options = {}
 
+  mergeJsonFragment(body, p.customParams)
+
   return {
     url,
     headers: {
@@ -432,6 +434,8 @@ function buildClaude(req: ChatRequest): BuiltRequest {
     claudeTools.push({ type: 'web_search_20250305', name: 'web_search' })
   if (claudeTools.length) body.tools = claudeTools
 
+  mergeJsonFragment(body, p.customParams)
+
   return {
     url,
     headers: {
@@ -568,6 +572,8 @@ function buildGemini(req: ChatRequest): BuiltRequest {
   // Provider-native web search via Google Search grounding.
   if (en.nativeWebSearch) geminiTools.push({ google_search: {} })
   if (geminiTools.length) body.tools = geminiTools
+
+  mergeJsonFragment(body, p.customParams)
 
   return {
     url,

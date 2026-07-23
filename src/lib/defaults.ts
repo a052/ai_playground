@@ -49,6 +49,7 @@ export const DEFAULT_PARAMETERS: ModelParameters = {
   claudeEffort: 'high',
   n: 1,
   logitBias: '',
+  customParams: '',
 }
 
 /**

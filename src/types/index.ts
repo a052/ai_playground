@@ -267,6 +267,8 @@ export interface ModelParameters {
   n: number
   /** Raw JSON text for logit_bias. */
   logitBias: string
+  /** Raw JSON fragment of custom parameters merged into the request body (all providers); sent when non-empty. */
+  customParams: string
 }
 
 // ---------------------------------------------------------------------------

@@ -65,6 +65,9 @@ export function ParameterPanel() {
   })
   const off = (key: ToggleableParam) => !p.enabled[key]
 
+  const customParamsInvalid =
+    !!p.customParams.trim() && !isValidJsonFragment(p.customParams)
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
@@ -488,7 +491,7 @@ export function ParameterPanel() {
           </AccordionItem>
 
           {/* Advanced */}
-          <AccordionItem value="advanced" className="border-b-0">
+          <AccordionItem value="advanced">
             <AccordionTrigger>{t('param.section.advanced')}</AccordionTrigger>
             <AccordionContent className="space-y-5 pt-1">
               <Field
@@ -528,6 +531,30 @@ export function ParameterPanel() {
                 {logitInvalid && (
                   <p className="text-[11px] text-destructive">
                     {t('param.logitBias.invalid')}
+                  </p>
+                )}
+              </Field>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Custom parameters */}
+          <AccordionItem value="custom" className="border-b-0">
+            <AccordionTrigger>{t('param.section.custom')}</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
+              <Field label={t('param.custom')} tip={t('param.custom.tip')}>
+                <Textarea
+                  value={p.customParams}
+                  onChange={(e) => set('customParams', e.target.value)}
+                  placeholder={t('param.custom.placeholder')}
+                  className={cn(
+                    'min-h-[72px] font-mono text-xs',
+                    customParamsInvalid &&
+                      'border-destructive focus-visible:ring-destructive',
+                  )}
+                />
+                {customParamsInvalid && (
+                  <p className="text-[11px] text-destructive">
+                    {t('param.custom.invalid')}
                   </p>
                 )}
               </Field>

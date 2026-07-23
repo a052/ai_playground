@@ -262,10 +262,13 @@ Defined in `ModelParameters` (`src/types/index.ts`); defaults in `src/lib/defaul
 | `claudeEffort` | `'low'\|'medium'\|'high'\|'xhigh'\|'max'` | `'high'` | n/a (used when `claudeThinking`) | Claude | Adaptive-thinking effort (`output_config.effort`). |
 | `n` | `number` | `1` | ❌ | OpenAI | Number of completions. |
 | `logitBias` | `string` (JSON) | `''` | ❌ | OpenAI | Raw `{ token_id: bias }` JSON. |
+| `customParams` | `string` (JSON fragment) | `''` | n/a (sent if non-empty) | all | Raw JSON fragment merged into the request body. |
 
 † **Claude + extended thinking:** when `claudeThinking` is enabled, `temperature` / `top_p` / `top_k` are **omitted** from the Claude request (Anthropic constraint). The Parameter Panel shows a warning for this.
 
 `reasoningCustom` and `logitBias` must be valid JSON; the panel validates them and shows an error rather than sending malformed JSON.
+
+**Custom parameters** (Parameters panel → **Custom** section) is a single free-text `customParams` JSON fragment — same UX as the reasoning **Custom parameter** box, and active whenever non-empty (like `systemPrompt`, no toggle). It accepts either a bare key/value list (`"enable_thinking": true, "min_p": 0.05`) or a full object, with tolerant comma handling. At send time it is merged into the top-level request body of all three providers via `mergeJsonFragment` (`apiClient.ts`), run **last** in each builder so custom keys can override templated parameters. The panel validates it with `isValidJsonFragment` and an invalid fragment is not merged.
 
 ---
 
