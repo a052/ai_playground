@@ -1,5 +1,6 @@
 import type { SearchConfig, SearchProvider, SearchResult } from '@/types'
 import { runHttp, safeReadText, type BuiltRequest } from '@/lib/http'
+import { safeHttpUrl } from '@/lib/urlSafety'
 import { fetchPage } from '@/lib/urlFetcher'
 import type { ToolContext, ToolExecResult } from '@/lib/toolContext'
 
@@ -274,7 +275,12 @@ export async function runWebSearch(
     }
   }
 
-  let results = adapter.parseResults(json, cfg).slice(0, ctx.searchSettings.maxResults)
+  // Restrict result URLs to http(s) so untrusted provider payloads cannot
+  // surface javascript: (etc.) as link targets or fetch_top_n inputs.
+  let results = adapter
+    .parseResults(json, cfg)
+    .map((r) => ({ ...r, url: safeHttpUrl(r.url) ?? '' }))
+    .slice(0, ctx.searchSettings.maxResults)
 
   // Optional: auto-fetch the top-N result pages and embed their content.
   if (ctx.searchSettings.depth === 'fetch_top_n' && ctx.searchSettings.topN > 0) {

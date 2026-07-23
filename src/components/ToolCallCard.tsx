@@ -11,6 +11,7 @@ import {
 import { useT } from '@/i18n'
 import { Tip } from '@/components/ui/tip'
 import type { FetchedPage, SearchResult, ToolCall } from '@/types'
+import { safeHttpUrl } from '@/lib/urlSafety'
 import { cn } from '@/lib/utils'
 
 interface ToolCallCardProps {
@@ -90,25 +91,7 @@ export function ToolCallCard({ toolCall, onInspect }: ToolCallCardProps) {
             <p className="text-destructive">{toolCall.error}</p>
           )}
           {results?.map((r, i) => (
-            <a
-              key={i}
-              href={r.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent"
-            >
-              <div className="truncate font-medium text-foreground/90">
-                {r.title || r.url}
-              </div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {r.url}
-              </div>
-              {r.snippet && (
-                <p className="mt-0.5 line-clamp-2 text-muted-foreground">
-                  {r.snippet}
-                </p>
-              )}
-            </a>
+            <SearchResultRow key={i} result={r} />
           ))}
           {page && (
             <div className="space-y-1">
@@ -127,6 +110,31 @@ export function ToolCallCard({ toolCall, onInspect }: ToolCallCardProps) {
       )}
     </div>
   )
+}
+
+function SearchResultRow({ result: r }: { result: SearchResult }) {
+  const href = safeHttpUrl(r.url)
+  const body = (
+    <>
+      <div className="truncate font-medium text-foreground/90">
+        {r.title || r.url}
+      </div>
+      <div className="truncate text-[11px] text-muted-foreground">{r.url}</div>
+      {r.snippet && (
+        <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.snippet}</p>
+      )}
+    </>
+  )
+  const className = 'block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent'
+  // Only http(s) may become an href — React does not strip javascript: schemes.
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer noopener" className={className}>
+        {body}
+      </a>
+    )
+  }
+  return <div className={className}>{body}</div>
 }
 
 function StatusIcon({ status }: { status: ToolCall['status'] }) {

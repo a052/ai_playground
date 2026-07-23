@@ -1,13 +1,20 @@
 import type { FetchedPage } from '@/types'
 import { runHttp, safeReadText } from '@/lib/http'
+import { safeHttpUrl } from '@/lib/urlSafety'
 import type { ToolContext, ToolExecResult } from '@/lib/toolContext'
 
-/** Strip a data URL / normalize a candidate URL; ensure it has a scheme. */
+/**
+ * Normalize a candidate URL for fetch. Accepts http(s) as-is; scheme-less
+ * hosts get `https://` prepended. Rejects non-http(s) schemes (javascript:,
+ * data:, etc.) so they are never passed to fetch/Jina.
+ */
 function normalizeUrl(raw: string): string {
   const url = raw.trim()
   if (!url) return ''
-  if (/^https?:\/\//i.test(url)) return url
-  return `https://${url}`
+  // Already has a scheme → only http(s) are allowed.
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) return safeHttpUrl(url) ?? ''
+  // Scheme-less host/path → assume https.
+  return safeHttpUrl(`https://${url}`) ?? ''
 }
 
 function truncate(text: string, limit: number): { text: string; truncated: boolean } {
